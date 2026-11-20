@@ -1,12 +1,12 @@
 // Optional always-running container worker. No service-role key or saved user passwords.
 const express=require('express');
-const {client,getJob,fail}=require('../lib/backend');
+const {client,getJob,fail,MAX_SOURCE_SECONDS}=require('../lib/backend');
 const {available,VERSION}=require('../lib/downloader');
 const {processJob}=require('../lib/processor');
 function createWorker({makeClient=client,process=processJob,isAvailable=available,concurrency=2}={}) {
  const app=express();let active=0,closing=false;
  app.disable('x-powered-by');app.use(express.json({limit:'4kb'}));
- app.get('/health',(req,res)=>res.json({ok:!closing,downloadWorker:isAvailable()?VERSION:null,active,capacity:concurrency,maxSourceSeconds:300}));
+ app.get('/health',(req,res)=>res.json({ok:!closing,downloadWorker:isAvailable()?VERSION:null,active,capacity:concurrency,maxSourceSeconds:Number.isFinite(MAX_SOURCE_SECONDS)?MAX_SOURCE_SECONDS:null}));
  app.post('/jobs',async(req,res)=>{
   try {
    if(closing||active>=concurrency)throw fail('Worker busy. Try again shortly.',503);

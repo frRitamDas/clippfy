@@ -1034,7 +1034,7 @@ function renderPlans() {
   if (!b) { box.innerHTML = ""; return; }
   if (b.free) {
     $("#plansTitle").textContent = "Your workspace";
-    box.innerHTML = '<article class="pp pp-trial"><div><span class="pp-tag">$1 trial · coming soon</span><h3>Your $1 trial offer</h3><p>Paid checkout is not enabled yet. Use the free workspace below now; no payment is required.</p></div></article><article class="pp pp-current"><div><span class="pp-tag">Free access</span><h3>Upload, clip, edit & download</h3><p>30 stored clips · 500 MB workspace · sources up to 50 MB / 5 minutes. Export: 720 × 1280 MP4. Clips are evenly spaced excerpts, not AI-ranked highlights. YouTube imports support public recorded videos up to 5 minutes / 50 MB (downloaded up to 480p); YouTube may block the server. Other sites and paid plans are not configured. Automatic captions support a Groq free-tier key; OpenAI is optional and never selected automatically.</p></div><a class="btn btn-primary" href="#create">Create clips</a></article>';
+    box.innerHTML = '<article class="pp pp-trial"><div><span class="pp-tag">$1 trial · coming soon</span><h3>Your $1 trial offer</h3><p>Paid checkout is not enabled yet. Use the free workspace below now; no payment is required.</p></div></article><article class="pp pp-current"><div><span class="pp-tag">Free access</span><h3>Upload, clip, edit & download</h3><p>'+(b.access?.admin?'Admin: uncapped workspace clips/projects · provider storage limits apply':(b.usage.clipsLimit+' stored clips · '+b.usage.storageLimit+' GB workspace'))+' · sources up to 50 MB (no fixed source-duration cap). Export: 720 × 1280 MP4. Clips are evenly spaced excerpts, not AI-ranked highlights. YouTube imports support public recorded videos up to 50 MB (downloaded up to 480p); YouTube may block the server. Other sites and paid plans are not configured. Automatic captions support a Groq free-tier key; OpenAI is optional and never selected automatically.</p></div><a class="btn btn-primary" href="#create">Create clips</a></article>';
     return;
   }
   const P = b.plans;
@@ -1099,8 +1099,8 @@ function renderPlanChip() {
   const b = state.billing, chip = $("#planChip");
   if (!b || !b.active) { chip.hidden = true; return; }
   chip.hidden = false;
-  const name = b.free ? "Free workspace" : b.tier === "trial" ? "Trial" : b.plans[b.tier].name;
-  const sub = b.tier === "trial" ? `ends in ${timeLeft(b.trialEnd)}` : `${b.usage.clipsLeft} of ${b.usage.clipsLimit} clips left`;
+  const name = b.access?.admin ? "Admin workspace" : b.access?.plan && b.access.plan!=="free" ? b.access.plan+" (granted)" : b.free ? "Free workspace" : b.tier === "trial" ? "Trial" : b.plans[b.tier].name;
+  const sub = b.tier === "trial" ? `ends in ${timeLeft(b.trialEnd)}` : b.usage.clipsLimit===null ? "Uncapped workspace clips" : `${b.usage.clipsLeft} of ${b.usage.clipsLimit} clips left`;
   chip.innerHTML = `<b>${name}</b><span>${sub}</span>`;
   chip.classList.toggle("trial", b.tier === "trial");
 }
@@ -1130,7 +1130,7 @@ function fillBilling() {
     return;
   }
   if (b.free) {
-    body.innerHTML = `<div class="bill-row"><div><b>Free workspace</b><small>No charges. ${b.usage.clipsUsed} of 30 stored clips · ${bytes(b.usage.storageBytes)} used. Delete old projects to free space.</small></div></div>`;
+    body.innerHTML = `<div class="bill-row"><div><b>${b.access?.admin ? "Admin workspace" : b.access?.plan || "Free workspace"}</b><small>No charges. ${b.usage.clipsUsed} / ${b.usage.clipsLimit===null ? "uncapped" : b.usage.clipsLimit} stored clips · ${bytes(b.usage.storageBytes)} used. Delete old projects to free space.</small></div></div>`;
     return;
   }
   const u = b.usage, P = b.plans;
@@ -1200,6 +1200,6 @@ sourceSeg.set("url"); state.source = "url";
 $$(".pane").forEach(p => p.hidden = p.dataset.pane !== "url");
 const sourceHint = document.createElement("p");
 sourceHint.className = "hint";
-sourceHint.textContent = "YouTube links and uploads: up to 50 MB / 5 minutes. Public recorded videos only; YouTube may block cloud downloads. Use only videos you own or have permission to use. 720p vertical MP4 exports. Clips use evenly spaced excerpts. Keep this page open to follow progress. Captions need an OpenAI key; turn them off if unavailable. Caption exports currently use static Anton text; advanced animation previews are not exported.";
+sourceHint.textContent = "YouTube links and uploads: up to 50 MB; no fixed source-duration cap. Public recorded videos only; YouTube may block cloud downloads. Use only videos you own or have permission to use. 720p vertical MP4 exports. Source length has no default application cap, but Vercel execution time and storage limits still apply. Clips use evenly spaced excerpts. Keep this page open to follow progress. Captions support a Groq key; turn them off if unavailable. Caption exports currently use static Anton text; advanced animation previews are not exported.";
 $("#createForm").prepend(sourceHint);
 const recovery = document.createElement("a"); recovery.href="/reset"; recovery.textContent="Forgot password?"; recovery.className="btn btn-quiet btn-sm"; $("#authForm").append(recovery);

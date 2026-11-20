@@ -84,3 +84,11 @@ docker run --rm -p 8080:8080 \
 5. Test an actual signed-in YouTube project from this host. Vercel's build-time smoke test still reports **Vercel build egress**, not your separate worker's network. Do not treat an installed binary, healthy HTTP endpoint, or mock-based tests as a successful YouTube download.
 
 **Observed deployment result (20 November 2026):** yt-dlp installed and launched successfully on Vercel, but YouTube rejected the current upstream test fixture with “Sign in to confirm you’re not a bot.” The built-in import path is implemented; successful live YouTube ingestion has **not** been established on that hosting network. Uploads remain the fallback. A different host may also be blocked; test before committing to it.
+
+## Admin access and source-duration update
+
+The default application source-duration ceiling is now removed (upload and YouTube metadata paths). Set `MAX_SOURCE_SECONDS` to a positive number on API/worker hosts if you want a specific ceiling. This **does not** remove Vercel's 300-second execution ceiling, the current 265-second processing budget, per-download timeout, 50-MB Supabase/upload cap, captions provider quotas, or cloud YouTube blocks. Large videos can still fail for those reasons. This is not an unlimited-processing promise.
+
+Apply `supabase/migrations/202611200002_entitlements.sql` for manual access management. The verified database account `ritam73592@gmail.com` has uncapped *workspace* project/clip/storage quotas in the application; batch work stays at 1–10 clips, and provider/storage/processing limits still apply. Sign in and open `/admin` to grant Starter/Clipper/Pro access by verified registered email, optionally with an expiry. Select Free to revoke. These are complimentary manual entitlements, not paid or auto-renewing subscriptions. Grants do not create administrators. Each change is audited. Members cannot directly write access/audit tables or bypass the admin-checked RPC. Expired grants revert to free quotas on the next request without deleting existing files.
+
+Current plans count stored clips rather than monthly generation credits: Free 30 / 500 MB, Starter 30 / 1 GB, Clipper 100 / 5 GB, Pro 300 / 10 GB. Admin grants do not upgrade your Supabase hosting plan. Quota checks are not a transactional reservation system; keep the single-active-project guard and monitor storage usage.

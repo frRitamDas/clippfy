@@ -10,17 +10,17 @@ test('YouTube input is canonicalized, with no arbitrary hosts, credentials, port
  for(const url of [`https://youtu.be/${id}?t=5`,`https://www.youtube.com/watch?v=${id}&list=ignored`,`https://m.youtube.com/shorts/${id}`,`http://youtube.com/embed/${id}`])assert.equal(D.youtubeURL(url),canonical);
  for(const url of ['file:///etc/passwd','http://127.0.0.1/watch?v='+id,'https://youtube.com.evil.test/watch?v='+id,'https://evil.youtube.com/watch?v='+id,'https://youtube.com@127.0.0.1/watch?v='+id,'https://user:pass@youtube.com/watch?v='+id,'https://youtube.com:444/watch?v='+id,'https://youtube.com/playlist?list=test','https://youtube.com/watch?v=--exec+bad','https://youtu.be/'+id+'/extra'])assert.throws(()=>D.youtubeURL(url),url);
 });
-test('metadata rejects live, private, age-restricted, non-video and over-limit sources',()=>{
- const base={id,duration:13,live_status:'not_live'};assert.equal(D.validateMetadata(base),base);
- for(const patch of [{duration:301},{duration:undefined},{duration:Infinity},{_type:'playlist'},{is_live:true},{is_upcoming:true},{live_status:'post_live'},{age_limit:18},{availability:'private'}])assert.throws(()=>D.validateMetadata({...base,...patch}));
+test('metadata rejects live, private, age-restricted, non-video sources but accepts recordings longer than five minutes',()=>{
+ const base={id,duration:13,live_status:'not_live'};assert.equal(D.validateMetadata(base),base);assert.equal(D.validateMetadata({...base,duration:7200}).duration,7200);
+ for(const patch of [{duration:undefined},{duration:Infinity},{_type:'playlist'},{is_live:true},{is_upcoming:true},{live_status:'post_live'},{age_limit:18},{availability:'private'}])assert.throws(()=>D.validateMetadata({...base,...patch}));
 });
 test('download worker checks metadata before downloading and only returns a bounded video file',async()=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'yt-worker-test-'));const calls=[];let title;
  try{const result=await D.downloadYouTube(canonical,dir,{execute:async(args,opts)=>{calls.push(args);assert.equal(opts.dir,dir);assert.equal(args.at(-1),canonical);assert.equal(args.at(-2),'--');assert(args.includes('--ignore-config'));assert(args.includes('--no-playlist'));if(args.includes('--dump-single-json'))return JSON.stringify({id,title:'Test video',duration:13});await fs.writeFile(path.join(dir,'youtube.mp4'),'video');return '';},onMetadata:async m=>{title=m.title;}});assert.equal(title,'Test video');assert.equal(result.bytes,5);assert.equal(calls.length,2);assert(calls[1].includes('--max-filesize'));assert(calls[1].includes('--ffmpeg-location'));}finally{await fs.rm(dir,{recursive:true,force:true});}
 });
-test('over-duration metadata and mismatched IDs never reach the download step',async()=>{
+test('invalid-duration metadata and mismatched IDs never reach the download step',async()=>{
  let calls=0;
- for(const meta of [{id,duration:999},{id:'xxxxxxxxxxx',duration:10}]){calls=0;await assert.rejects(D.downloadYouTube(canonical,'/tmp',{execute:async()=>{calls++;return JSON.stringify(meta);}}));assert.equal(calls,1);}
+ for(const meta of [{id,duration:-1},{id:'xxxxxxxxxxx',duration:10}]){calls=0;await assert.rejects(D.downloadYouTube(canonical,'/tmp',{execute:async()=>{calls++;return JSON.stringify(meta);}}));assert.equal(calls,1);}
 });
 test('missing output and oversized output cannot become completed downloads',async()=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'yt-worker-size-'));

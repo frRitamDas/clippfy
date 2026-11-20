@@ -1,3 +1,4 @@
+const {access,exceeds}=require('../lib/access');
 const transcription=require('../lib/transcription');
 const express=require('express');
 const B=require('../lib/backend');
@@ -11,7 +12,7 @@ app.use((req,res,next)=>{const url=new URL(req.url,'http://internal');if(url.sea
 app.use((req,res,next)=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');if(!['GET','HEAD','OPTIONS'].includes(req.method)&&req.headers.origin){let origin;try{origin=new URL(req.headers.origin).host;}catch{}if(origin!==req.headers.host)return res.status(403).json({error:'Cross-site request rejected.'});}next();});
 app.use(express.json({limit:'100kb'}));
 const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next);
-app.get('/api/health',(req,res)=>res.json({ok:true,configured:!!process.env.SUPABASE_URL,transcription:transcription.configured(),links:downloader.available()||!!process.env.DOWNLOAD_WORKER_URL,workerMode:process.env.DOWNLOAD_WORKER_URL?'container':'vercel',youtubeSmoke:downloader.smokeResult(),downloadWorker:downloader.available()?downloader.VERSION:null,payments:false,maxBytes:B.MAX_BYTES,maxDuration:300}));
+app.get('/api/health',(req,res)=>res.json({ok:true,configured:!!process.env.SUPABASE_URL,transcription:transcription.configured(),links:downloader.available()||!!process.env.DOWNLOAD_WORKER_URL,workerMode:process.env.DOWNLOAD_WORKER_URL?'container':'vercel',youtubeSmoke:downloader.smokeResult(),downloadWorker:downloader.available()?downloader.VERSION:null,payments:false,maxBytes:B.MAX_BYTES,maxDuration:Number.isFinite(B.MAX_SOURCE_SECONDS)?B.MAX_SOURCE_SECONDS:null}));
 app.get('/api/offer',(req,res)=>res.json({open:false,now:Date.now(),endsAt:0}));
 app.get('/api/auth/providers',(req,res)=>res.json({google:false}));
 app.post('/api/auth/signup',wrap(async(req,res)=>{
@@ -34,15 +35,18 @@ app.patch('/api/account',wrap(async(req,res)=>{
  B.checked(await req.sb.from('profiles').update(patch).eq('id',req.user.id));res.json(await B.profile(req.sb,req.user));
 }));
 const plans={starter:{name:'Starter',price:19,yearPrice:190,clips:30,storage:1,uploads:true,live:false,maxRes:'1080p'},clipper:{name:'Clipper',price:39,yearPrice:390,clips:100,storage:5,uploads:true,live:false,maxRes:'1080p'},pro:{name:'Pro',price:79,yearPrice:790,clips:300,storage:10,uploads:true,live:false,maxRes:'1080p'},trial:{clips:10,storage:1}};
-async function rows(req){return B.checked(await req.sb.from('jobs').select('*').eq('user_id',req.user.id).order('created_at',{ascending:false}).limit(100));}
-app.get('/api/billing',wrap(async(req,res)=>{const data=await rows(req);const used=data.reduce((s,r)=>s+(r.payload.clips||[]).length,0);res.json({active:true,free:true,tier:'starter',plan:'starter',interval:'month',configured:false,canManage:false,dev:false,offerOpen:false,trialUsed:false,trial:{then:'starter',thenInterval:'month',days:3},plans,usage:{clipsUsed:used,clipsLeft:Math.max(0,30-used),clipsLimit:30,storageBytes:data.reduce((s,r)=>s+(r.payload.sourceBytes||0)+(r.payload.clips||[]).reduce((n,c)=>n+(c.bytes||0),0),0),storageLimit:0.5},limits:{uploads:true},status:'free'});}));
+async function rows(req){const out=[];for(let offset=0;;offset+=1000){const batch=B.checked(await req.sb.from('jobs').select('*').eq('user_id',req.user.id).order('created_at',{ascending:false}).order('id').range(offset,offset+999));out.push(...batch);if(batch.length<1000)return out;}}
+app.get('/api/billing',wrap(async(req,res)=>{
+ const data=await rows(req),a=await access(req.sb,req.user);const used=data.reduce((s,r)=>s+(r.payload.clips||[]).length,0);
+ res.json({active:true,free:true,tier:'starter',plan:'starter',access:a,interval:'month',configured:false,canManage:false,dev:false,offerOpen:false,trialUsed:false,trial:{then:'starter',thenInterval:'month',days:3},plans,usage:{clipsUsed:used,clipsLeft:a.clipLimit===null?null:Math.max(0,a.clipLimit-used),clipsLimit:a.clipLimit,storageBytes:data.reduce((s,r)=>s+(r.payload.sourceBytes||0)+(r.payload.clips||[]).reduce((n,c)=>n+(c.bytes||0),0),0),storageLimit:a.storageLimit===null?null:a.storageLimit/1024**3},limits:{uploads:true},status:a.admin?'admin':a.plan});
+}));
 app.post('/api/billing/{*path}',(req,res)=>res.status(503).json({error:'Paid billing is not configured. The free upload workspace is available; no payment has been taken.'}));
 app.get('/api/stats',wrap(async(req,res)=>{const data=await rows(req);res.json({projects:data.length,clips:data.reduce((s,r)=>s+r.payload.clips.length,0),sourceMinutes:Math.round(data.reduce((s,r)=>s+(r.payload.duration||0),0)/60),avgScore:0,storageBytes:data.reduce((s,r)=>s+(r.payload.sourceBytes||0),0)});}));
 app.post('/api/uploads',wrap(async(req,res)=>{
- const data=await rows(req);if(data.some(r=>['queued','running'].includes(r.payload.status)))throw B.fail('Wait for your current project or cancel it first.',409);
- if(data.length>=30)throw B.fail('Workspace limit reached. Delete old projects first.',409);
+ const data=await rows(req),a=await access(req.sb,req.user);if(data.some(r=>['queued','running'].includes(r.payload.status)))throw B.fail('Wait for your current project or cancel it first.',409);
+ if(exceeds(a.projectLimit,data.length+1))throw B.fail('Workspace limit reached. Delete old projects first.',409);
  if(!Number.isFinite(req.body.size)||req.body.size<1||req.body.size>B.MAX_BYTES)throw B.fail('Choose a video up to 50 MB.');
- if(data.reduce((s,r)=>s+(r.payload.sourceBytes||0)+(r.payload.clips||[]).reduce((n,c)=>n+(c.bytes||0),0),0)+req.body.size>500*1024*1024)throw B.fail('Storage limit reached. Delete old projects first.');
+ if(exceeds(a.storageLimit,data.reduce((s,r)=>s+(r.payload.sourceBytes||0)+(r.payload.clips||[]).reduce((n,c)=>n+(c.bytes||0),0),0)+req.body.size))throw B.fail('Storage limit reached. Delete old projects first.');
  const id=B.crypto.randomUUID(),name=B.safeFilename(req.body.name),sourcePath=`${req.user.id}/${id}/source`;
  const result=B.checked(await req.sb.storage.from('videos').createSignedUploadUrl(sourcePath));
  res.json({id,path:sourcePath,uploadUrl:result.signedUrl,name});
@@ -54,9 +58,9 @@ app.post('/api/jobs',wrap(async(req,res)=>{
  if(sourceURL&&!downloader.available()&&!process.env.DOWNLOAD_WORKER_URL)throw B.fail('The YouTube worker is not installed on this server. Upload a video or ask the administrator to redeploy.',503);
  const id=sourceURL?B.crypto.randomUUID():req.body.id;
  if(!/^[a-f0-9-]{36}$/i.test(id||''))throw B.fail('Upload a video first.');
- const all=await rows(req);
+ const all=await rows(req),a=await access(req.sb,req.user);
  if(all.some(r=>['running','queued'].includes(r.payload.status)))throw B.fail('A project is already running. Wait or cancel it first.',409);
- if(all.length>=30||all.reduce((s,r)=>s+r.payload.clips.length,0)+opts.clips>30)throw B.fail('Free workspace limit is 30 clips. Delete old projects to free space.');
+ if(exceeds(a.projectLimit,all.length+1)||exceeds(a.clipLimit,all.reduce((s,r)=>s+r.payload.clips.length,0)+opts.clips))throw B.fail('Your workspace quota is reached. Delete old projects or ask the administrator for plan access.');
  const sourcePath=`${req.user.id}/${id}/source`;
  let sourceBytes=B.MAX_BYTES;
  if(!sourceURL){
@@ -65,7 +69,7 @@ app.post('/api/jobs',wrap(async(req,res)=>{
   sourceBytes=file.metadata.size;
  }
  const used=all.reduce((sum,r)=>sum+(r.payload.sourceBytes||0)+(r.payload.clips||[]).reduce((n,c)=>n+(c.bytes||0),0),0);
- if(used+sourceBytes>500*1024*1024)throw B.fail('Storage limit reached. Delete old projects first.');
+ if(exceeds(a.storageLimit,used+sourceBytes))throw B.fail('Storage limit reached. Delete old projects first.');
  const payload={title:sourceURL?'YouTube video':B.safeFilename(req.body.name),status:'queued',progress:0,stage:'download',stages:{},options:opts,clips:[],sourcePath,sourceBytes,sourceType:sourceURL?'youtube':'upload',sourceURL,selection:'evenly_spaced'};
  const r=B.checked(await req.sb.from('jobs').insert({id,user_id:req.user.id,payload}).select().single());
  try {
@@ -84,7 +88,14 @@ app.delete('/api/jobs/:id',wrap(async(req,res)=>{await B.removeJob(req.sb,req.us
 app.delete('/api/jobs',wrap(async(req,res)=>{const data=(await rows(req)).filter(r=>!['queued','running'].includes(r.payload.status));for(const r of data)await B.removeJob(req.sb,req.user,r);res.json({removed:data.length});}));
 app.post('/api/jobs/:id/clips/:index',wrap(async(req,res)=>{const row=await B.getJob(req.sb,req.user,req.params.id);if(row.payload.status!=='done')throw B.fail('Wait for processing to finish.',409);res.json(await require('../lib/processor').editClip(req.sb,req.user,row,Number(req.params.index),req.body));}));
 app.get('/api/media/:id/:index/:kind',wrap(async(req,res)=>{const r=await B.getJob(req.sb,req.user,req.params.id);const clip=r.payload.clips.find(c=>String(c.index)===req.params.index);if(!clip)throw B.fail('Clip not found.',404);const key=req.params.kind==='thumb'?clip.thumbPath:clip.videoPath;const data=B.checked(await req.sb.storage.from('videos').createSignedUrl(key,3600,req.query.download?{download:`clippfy-${clip.index+1}.mp4`}:{}));res.redirect(302,data.signedUrl);}));
-app.get('/api/admin',wrap(async(req,res)=>{if(!B.checked(await req.sb.rpc('is_clippfy_admin')))throw B.fail('Administrator access required.',403);res.json({profiles:B.checked(await req.sb.from('profiles').select('id,name,created_at').limit(100)),jobs:B.checked(await req.sb.from('jobs').select('*').order('created_at',{ascending:false}).limit(100)).map(r=>({id:r.id,userId:r.user_id,title:r.payload.title,status:r.payload.status,error:r.payload.error,createdAt:r.created_at})),configuration:{transcription:transcription.configured(),payments:false,linkImport:downloader.available()||!!process.env.DOWNLOAD_WORKER_URL,workerMode:process.env.DOWNLOAD_WORKER_URL?'container':'vercel',downloadWorker:downloader.available()?downloader.VERSION:null}});}));
+app.post('/api/admin/access',wrap(async(req,res)=>{
+ if(!B.checked(await req.sb.rpc('is_clippfy_admin')))throw B.fail('Administrator access required.',403);
+ const {email,plan,expiresAt}=req.body;
+ if(typeof email!=='string'||email.length>254||!email.includes('@')||!['free','starter','clipper','pro'].includes(plan))throw B.fail('Enter a registered email and valid plan.');
+ if(expiresAt&&(!Number.isFinite(Date.parse(expiresAt))||Date.parse(expiresAt)<=Date.now()))throw B.fail('Choose a future expiry date.');
+ res.json(B.checked(await req.sb.rpc('clippfy_set_access',{target_email:email.trim(),target_plan:plan,valid_until:expiresAt||null})));
+}));
+app.get('/api/admin',wrap(async(req,res)=>{if(!B.checked(await req.sb.rpc('is_clippfy_admin')))throw B.fail('Administrator access required.',403);res.json({profiles:B.checked(await req.sb.from('profiles').select('id,name,created_at').limit(100)),jobs:B.checked(await req.sb.from('jobs').select('*').order('created_at',{ascending:false}).limit(100)).map(r=>({id:r.id,userId:r.user_id,title:r.payload.title,status:r.payload.status,error:r.payload.error,createdAt:r.created_at})),grants:B.checked(await req.sb.from('clippfy_access').select('*').limit(100)),audit:B.checked(await req.sb.from('clippfy_access_audit').select('*').order('created_at',{ascending:false}).limit(50)),configuration:{transcription:transcription.configured(),payments:false,linkImport:downloader.available()||!!process.env.DOWNLOAD_WORKER_URL,workerMode:process.env.DOWNLOAD_WORKER_URL?'container':'vercel',downloadWorker:downloader.available()?downloader.VERSION:null}});}));
 app.use('/api',(req,res)=>res.status(404).json({error:'API endpoint not found.'}));
 app.use((err,req,res,next)=>{if(res.headersSent)return next(err);console.error(err.status?err.message:err);res.status(err.status||500).json({error:err.status?err.message:'Something went wrong on the server. Please try again.'});});
 module.exports=app;
