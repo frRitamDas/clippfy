@@ -1,0 +1,17 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs/promises');const os=require('node:os');const path=require('node:path');
+const B=require('../lib/backend');const P=require('../lib/processor');
+test('clip options enforce bounded work and do not trust arbitrary fields',()=>{assert.throws(()=>B.options({clips:100,maxLen:30}));assert.throws(()=>B.options({clips:1,maxLen:Infinity}));assert.deepEqual(B.options({clips:'2',maxLen:'10',captions:'false',style:'bad',isAdmin:true}),{clips:2,maxLen:10,captions:false,style:'lime',crop:'center',textCase:'upper'});});
+test('excerpts remain within source and do not overlap',()=>{for(const d of [2,15,65,300]){const r=P.ranges(d,10,30);for(let i=0;i<r.length;i++){assert(r[i].duration>0);assert(r[i].start+r[i].duration<=d+.001);if(i)assert(r[i].start>=r[i-1].start+r[i-1].duration-.001);}}});
+test('ASS captions escape override and newline injection',()=>{const s=P.ass([{word:'hello{\\pos(1,2)}\nworld',start:0,end:2}],0,2,{style:'lime',textCase:'lower'});assert(!s.includes('\\pos'));assert(s.includes('Dialogue:'));});
+test('FFmpeg performs real video generation, cropping, captions, thumbnail and trim',async()=>{const dir=await fs.mkdtemp(path.join(os.tmpdir(),'clippfy-test-'));try{const input=path.join(dir,'source.mp4');await P.run(['-f','lavfi','-i','color=c=blue:s=320x240:d=2','-f','lavfi','-i','sine=frequency=440:duration=2','-c:v','libx264','-c:a','aac','-shortest',input]);const info=await P.run(['-i',input,'-t','0.1','-f','null','-']);assert(Math.abs(P.durationFrom(info)-2)<0.1);let row={payload:{status:'queued',options:{clips:1,maxLen:5,captions:false},clips:[],sourcePath:'test/source',stages:{}}};const storage=new Map([['test/source',await fs.readFile(input)]]);const sb={
+ from(){
+   const query={eq(){return query;},maybeSingle:async()=>({data:structuredClone(row)}),single:async()=>({data:structuredClone(row)}),then(resolve){resolve({data:null});}};
+   return {select(){return query;},update(patch){row={...row,...structuredClone(patch)};return query;}};
+ },
+ storage:{from(){return {
+  download:async key=>({data:new Blob([storage.get(key)])}),
+  upload:async(key,data)=>{storage.set(key,data);return {data:{}};},
+  remove:async(keys)=>{keys.forEach(k=>storage.delete(k));return {data:{}};}
+ };}}
+};await P.processJob(sb,{id:'test'},'project');assert.equal(row.payload.status,'done',row.payload.error);assert.equal(row.payload.clips.length,1);assert(storage.get('test/project/0.mp4').length>1000);assert(storage.get('test/project/0.jpg').length>100);await P.editClip(sb,{id:'test'},{id:'project',payload:row.payload},0,{start:0,end:1,text:'Hello world',style:'lime'});assert.equal(row.payload.clips[0].duration,1);assert(!storage.has('test/project/0.mp4'));}finally{await fs.rm(dir,{recursive:true,force:true});}});
+test('anonymous API and cross-origin mutations are rejected',async()=>{const app=require('../api');const original=B.session;B.session=async()=>{throw B.fail('Sign in to continue.',401)};const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port;try{const health=await fetch(base+'/api/health');assert.equal(health.status,200);const jobs=await fetch(base+'/api/jobs');assert.equal(jobs.status,401);const csrf=await fetch(base+'/api/auth/logout',{method:'POST',headers:{Origin:'https://attacker.invalid'}});assert.equal(csrf.status,403);}finally{B.session=original;await new Promise(r=>server.close(r));}});

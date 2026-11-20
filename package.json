@@ -1,7 +1,23 @@
 {
-  "name": "clippfy.pro-clone",
-  "version": "1.0.0",
+  "name": "clippfy",
+  "version": "1.1.0",
+  "private": true,
   "scripts": {
-    "start": "npx serve ."
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "node scripts/build.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@ffmpeg-installer/linux-x64": "4.1.0",
+    "@supabase/supabase-js": "^2.95.3",
+    "@vercel/functions": "^3.4.0",
+    "express": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "jsdom": "^31.0.1"
   }
 }

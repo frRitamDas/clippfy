@@ -10,7 +10,7 @@ const STYLES = [
   { id: "classic", name: "Classic", html: '<span class="cs cs-classic">No way bro he did that</span>' },
 ];
 const STEPS = [["download", "Download"], ["transcribe", "Transcribe"], ["analyze", "Find moments"], ["render", "Render"]];
-const DEFAULTS = { style: "lime", crop: "center", clips: 10, maxLen: 58, captions: true, textCase: "upper", reduceMotion: false };
+const DEFAULTS = { style: "lime", crop: "center", clips: 3, maxLen: 30, captions: false, textCase: "upper", reduceMotion: false };
 
 const state = {
   user: null,
@@ -193,7 +193,14 @@ $("#createForm").onsubmit = async (e) => {
   btn.classList.add("loading");
   $("span", btn).textContent = state.source === "file" ? "Uploading…" : "Starting…";
   try {
-    const job = await api("/api/jobs", { method: "POST", body: fd });
+    if (state.source !== "file") throw new Error("Link importing needs a download worker. Choose Upload and select a video up to 50 MB / 5 minutes.");
+    if (state.file.size > 50 * 1024 * 1024) throw new Error("Choose a video up to 50 MB.");
+    // Upload directly to private storage; video bytes never hit Vercel's 4.5 MB request limit.
+    const ticket = await api("/api/uploads", { json: { name: state.file.name, size: state.file.size } });
+    const uploaded = await fetch(ticket.uploadUrl, { method: "PUT", headers: { "Content-Type": state.file.type || "application/octet-stream" }, body: state.file });
+    if (!uploaded.ok) throw new Error("Upload failed. Check your connection and try again.");
+    const payload = Object.fromEntries(fd.entries()); delete payload.file;
+    const job = await api("/api/jobs", { json: { ...payload, id: ticket.id, name: ticket.name } });
     $("#url").value = "";
     state.file = null;
     $("#dropText").textContent = "Drop a video here or browse";
@@ -867,6 +874,11 @@ $("#authForm").onsubmit = async (e) => {
     if (authMode === "signup") body.name = $("#aName").value;
     const user = await api(`/api/auth/${authMode}`, { json: body });
     $("#aPass").value = "";
+    if (user.confirmationRequired) {
+      $("#authError").textContent = "Check your email to confirm your account, then sign in. Check spam too.";
+      $("#authError").hidden = false;
+      return;
+    }
     unlock(user, authMode === "signup");
   } catch (ex) {
     const map = { name: "#aName", email: "#aEmail", password: "#aPass" };
@@ -928,6 +940,9 @@ const AUTH_ERRORS = {
   google_off: "Google sign-in isn't available right now. Use your email.",
   busy: "Too many attempts. Wait a few minutes and try again.",
 };
+// Exchange Supabase email-confirmation tokens for secure same-origin cookies.
+const authTokens = new URLSearchParams(location.hash.slice(1));
+const tokenReady = authTokens.has("access_token") ? api("/api/auth/session", {json: {access_token:authTokens.get("access_token"),refresh_token:authTokens.get("refresh_token")}}).then(() => {history.replaceState(null,"","/app");}).catch(e=>toast(e.message,"error")) : Promise.resolve();
 api("/api/auth/providers").then((p) => { $("#googleWrap").hidden = !p.google; }).catch(() => {});
 $("#googleBtn").onclick = () => {
   const q = new URLSearchParams();
@@ -951,6 +966,7 @@ $("#googleBtn").onclick = () => {
   }
   if (params.toString()) history.replaceState(null, "", "/app" + location.hash);
   try {
+    await tokenReady;
     const user = await api("/api/auth/me");
     unlock(user, welcome);
   } catch {
@@ -1006,6 +1022,11 @@ function renderPlans() {
   const b = state.billing;
   const box = $("#plansBody");
   if (!b) { box.innerHTML = ""; return; }
+  if (b.free) {
+    $("#plansTitle").textContent = "Your workspace";
+    box.innerHTML = '<article class="pp pp-current"><div><span class="pp-tag">Free access</span><h3>Upload, clip, edit & download</h3><p>30 stored clips · 500 MB workspace · sources up to 50 MB / 5 minutes. Export: 720 × 1280 MP4. Clips are evenly spaced excerpts, not AI-ranked highlights. Link importing and paid plans are not configured. Automatic captions require an administrator-provided OpenAI key.</p></div><a class="btn btn-primary" href="#create">Create clips</a></article>';
+    return;
+  }
   const P = b.plans;
   const feat = (p) => [
     `${p.clips} clips / month`, `${gb(p.storage)} storage`, "All caption styles + editor",
@@ -1068,7 +1089,7 @@ function renderPlanChip() {
   const b = state.billing, chip = $("#planChip");
   if (!b || !b.active) { chip.hidden = true; return; }
   chip.hidden = false;
-  const name = b.tier === "trial" ? "Trial" : b.plans[b.tier].name;
+  const name = b.free ? "Free workspace" : b.tier === "trial" ? "Trial" : b.plans[b.tier].name;
   const sub = b.tier === "trial" ? `ends in ${timeLeft(b.trialEnd)}` : `${b.usage.clipsLeft} of ${b.usage.clipsLimit} clips left`;
   chip.innerHTML = `<b>${name}</b><span>${sub}</span>`;
   chip.classList.toggle("trial", b.tier === "trial");
@@ -1081,6 +1102,7 @@ async function openPortal() {
 
 // one line about the current plan: what it costs and when it renews or ends
 function planLine(b) {
+  if (b.free) return "Free workspace · no subscription or automatic charges.";
   const P = b.plans, T = P[b.trial.then];
   if (b.tier === "trial") {
     const then = b.trial.thenInterval === "year" ? `${T.name} at ${money(T.yearPrice)}/year` : `${T.name} at ${money(T.price)}/month`;
@@ -1095,6 +1117,10 @@ function fillBilling() {
   if (!b) { body.innerHTML = ""; return; }
   if (!b.active) {
     body.innerHTML = `<div class="bill-row"><div><b>No active plan</b><small>Pick a plan to create, edit and download clips.</small></div><a class="btn btn-primary btn-sm" href="#plans">See plans</a></div>`;
+    return;
+  }
+  if (b.free) {
+    body.innerHTML = `<div class="bill-row"><div><b>Free workspace</b><small>No charges. ${b.usage.clipsUsed} of 30 stored clips · ${bytes(b.usage.storageBytes)} used. Delete old projects to free space.</small></div></div>`;
     return;
   }
   const u = b.usage, P = b.plans;
@@ -1157,3 +1183,11 @@ addEventListener("focus", async () => {
   await loadBilling();
   if (state.billing && state.billing.active !== was) route();
 });
+
+// Prefer the working upload flow; no changes to the existing layout.
+$("#useUpload").click();
+const sourceHint = document.createElement("p");
+sourceHint.className = "hint";
+sourceHint.textContent = "Upload up to 50 MB / 5 minutes. 720p vertical MP4 exports. Clips use evenly spaced excerpts. Keep this page open to follow progress. Captions need an OpenAI key; turn them off if unavailable. Caption exports currently use static Anton text; advanced animation previews are not exported.";
+$("#createForm").prepend(sourceHint);
+const recovery = document.createElement("a"); recovery.href="/reset"; recovery.textContent="Forgot password?"; recovery.className="btn btn-quiet btn-sm"; $("#authForm").append(recovery);
