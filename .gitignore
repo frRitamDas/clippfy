@@ -5,3 +5,6 @@ public/
 !.env.example
 .vercel/
 coverage/
+
+vendor/
+.cache/

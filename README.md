@@ -1,6 +1,6 @@
 # Clippfy
 
-The existing standalone design, connected to a Node/Vercel API and Supabase Auth, Postgres and private Storage.
+The existing standalone design, connected to a Node/Vercel API, an isolated yt-dlp YouTube download worker, and Supabase Auth, Postgres and private Storage.
 
 ## Run
 
@@ -28,7 +28,8 @@ Local server binds to `0.0.0.0:3000`. Vercel serves only the `public` build outp
 ## Working flow
 
 - Sign up, verify email, sign in; session refresh uses HttpOnly, SameSite cookies. Recovery links are handled at `/reset`.
-- Upload directly to a private Supabase bucket with a signed upload ticket, avoiding Vercel's request body limit.
+- Paste a public, recorded YouTube watch/Shorts/youtu.be URL. The background worker validates it, checks metadata, downloads up to 480p, persists the source privately, then runs the same clipping pipeline. Sources must be at most 5 minutes and 50 MB. Only import videos you own or have permission to use.
+- Or upload directly to a private Supabase bucket with a signed upload ticket, avoiding Vercel's request body limit.
 - Generate 1–10 evenly spaced, non-overlapping excerpts; real FFmpeg vertical 720 × 1280 H.264/AAC MP4s and JPEG thumbnails.
 - Source limit: 50 MB / 5 minutes. Output segments: up to 60 seconds. The free workspace allows 30 stored clips and approximately 500 MB. Delete projects to reclaim storage.
 - View project progress, cancel, browse clips, download individually/all, copy available transcripts, update profile name, delete finished/failed projects.
@@ -40,15 +41,26 @@ Local server binds to `0.0.0.0:3000`. Vercel serves only the `public` build outp
 This is **not yet the complete commercial AI product described by the original offline marketing pages**. The original landing/pricing/legal copy has been preserved as requested and must be reviewed before accepting paying customers.
 
 - Highlights are evenly spaced excerpts, not semantic AI-selected or virality-ranked moments. Scores are not fabricated.
-- YouTube/Twitch/Kick/Drive/Dropbox URL ingestion and live streams need a separate, durable download/processing worker. The server rejects link imports and directs users to uploads.
+- YouTube import is implemented, but **not every YouTube URL can work**: private, age-restricted, members-only, region-restricted, live and upcoming videos are rejected. YouTube can block cloud/datacenter IPs, including Vercel. Bot/sign-in/403/429 failures are surfaced explicitly with an upload fallback; no account cookies or access-control bypasses are used. Other websites and playlists are not supported.
+- Long recordings still need a dedicated, long-running processing service rather than the bounded Vercel worker. No external always-on worker hosting account has been provisioned.
 - Transcription requires `OPENAI_API_KEY`. The current exporter provides static, grouped Anton captions in the selected basic color; the original advanced animated caption preview is illustrative and does not yet match all export controls.
 - Paid checkout, subscriptions, trial offers and refunds are not connected. The workspace is explicitly free; no payment success is simulated. Google OAuth is hidden because no provider credentials exist.
 - Profile email changes are currently rejected rather than silently changing an unverified identity. Name changes and password recovery are supported.
 - Vercel's background function runtime is capped at 300 seconds. The UI marks abandoned jobs as failed after 6 minutes when retrieved. Large/high-resolution inputs may time out: retry shorter videos. Jobs do not survive infrastructure failure and there is no durable queue/retry scheduler yet.
-- Cancellation is cooperative between FFmpeg stages. A currently running encode is not immediately killed. Per-request checks limit ordinary usage, but production billing requires transactional reservations/quotas, durable job locking, and rate limiting. Direct Supabase authenticated access is governed by ownership RLS; clip quota is not a payment entitlement boundary.
+- Cancellation is checked every 2.5 seconds during processing and kills the active downloader/FFmpeg process. Jobs are claimed with an atomic queued-to-running database condition; cancellation-aware updates do not overwrite the cancelled status. Per-request checks limit ordinary usage, but production billing requires transactional reservations/quotas, durable job locking, and rate limiting. Direct Supabase authenticated access is governed by ownership RLS; clip quota is not a payment entitlement boundary.
 - Failed uploads that never become projects may leave private source objects. Add scheduled orphan cleanup before operating at scale. Admin API lists the most recent 100 users/projects.
 - The bundled FFmpeg npm distribution is an older GPL build. Review codec licensing and replace with a maintained binary/container worker before a public commercial launch.
 
 ## Tests
 
-`npm test` covers API unauthenticated/CSRF rejection, bounded rendering options, excerpt boundaries, caption escaping, real FFmpeg source generation/cropping/thumbnail rendering/text overlay/trimming, and DOM-based frontend boot/login/plans/settings/caption-step behavior with mocked API responses. These are not live email-delivery, OpenAI, payment, or real-browser end-to-end tests. The local Chromium check could not run because the sandbox lacks required shared libraries.
+`npm test` covers API unauthenticated/CSRF rejection, bounded rendering options, excerpt boundaries, caption escaping, real FFmpeg source generation/cropping/thumbnail rendering/text overlay/trimming, and DOM-based frontend boot/login/plans/settings/YouTube-submit behavior with mocked API responses. Downloader tests cover host/URL validation, metadata limits, child-process argument isolation, oversized/missing output, cancellation, timeouts and actionable error classification. These are not live email-delivery, OpenAI, payment, or real-browser end-to-end tests. The local Chromium check could not run because the sandbox lacks required shared libraries.
+
+## YouTube worker deployment and verification
+
+`npm run build` installs the pinned official `yt-dlp_linux` standalone executable (Python and EJS support included) into ignored `vendor/`. Its SHA-256 digest is pinned in `lib/downloader.js` and verified before execution. No executable, video, or metadata cache is copied into `public/`. The Vercel function explicitly bundles the executable alongside FFmpeg and fonts. Update the version **and** the release digest together when YouTube changes extraction requirements.
+
+The worker runs without a shell, ignores system/user yt-dlp configuration, disables playlists, cache and remote component loading, uses the deployed Node runtime for YouTube's JavaScript support, and receives no application API secrets in its child environment. It limits metadata extraction to 30 seconds, download to 90 seconds, and the whole job to 265 seconds, before Vercel's 300-second hard limit. Downloads are monitored for unknown-size/partial-file growth as well as yt-dlp's own maximum-size setting. The worker stores an actionable error code, not raw extractor logs or credentials.
+
+Each Vercel build runs `scripts/smoke-youtube.js`: download yt-dlp's public test fixture and render a one-second vertical MP4. The result is exposed on `/status.html` through `/api/health` as `youtubeSmoke`. A failed external test does **not** prevent deploying the working upload fallback, and an installed worker is never reported as a successful YouTube test. A successful build-machine test is not proof that Lambda's different egress IP will be accepted. A signed-in production YouTube project remains the definitive runtime end-to-end check.
+
+For local use, install a compatible yt-dlp executable and set `YTDLP_PATH` to its absolute path, or run `node scripts/install-downloader.js` to fetch the verified standalone version. For offline/local static-build tests only, `SKIP_DOWNLOADER_INSTALL=1 npm run build` skips this download; Vercel ignores that bypass and always installs/verifies its binary. The local sandbox cannot reach YouTube, so downloader network tests run from Vercel rather than being falsely reported as local successes.

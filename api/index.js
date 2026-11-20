@@ -1,6 +1,7 @@
 const express=require('express');
 const B=require('../lib/backend');
 const {processJob}=require('../lib/processor');
+const downloader=require('../lib/downloader');
 const app=express();
 app.disable('x-powered-by');app.set('trust proxy',1);
 // Keep API routing stable across Vercel's internal rewrite behavior.
@@ -8,7 +9,7 @@ app.use((req,res,next)=>{const url=new URL(req.url,'http://internal');if(url.sea
 app.use((req,res,next)=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');if(!['GET','HEAD','OPTIONS'].includes(req.method)&&req.headers.origin){let origin;try{origin=new URL(req.headers.origin).host;}catch{}if(origin!==req.headers.host)return res.status(403).json({error:'Cross-site request rejected.'});}next();});
 app.use(express.json({limit:'100kb'}));
 const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next);
-app.get('/api/health',(req,res)=>res.json({ok:true,configured:!!process.env.SUPABASE_URL,transcription:!!process.env.OPENAI_API_KEY,links:false,payments:false,maxBytes:B.MAX_BYTES,maxDuration:300}));
+app.get('/api/health',(req,res)=>res.json({ok:true,configured:!!process.env.SUPABASE_URL,transcription:!!process.env.OPENAI_API_KEY,links:downloader.available(),youtubeSmoke:downloader.smokeResult(),downloadWorker:downloader.available()?downloader.VERSION:null,payments:false,maxBytes:B.MAX_BYTES,maxDuration:300}));
 app.get('/api/offer',(req,res)=>res.json({open:false,now:Date.now(),endsAt:0}));
 app.get('/api/auth/providers',(req,res)=>res.json({google:false}));
 app.post('/api/auth/signup',wrap(async(req,res)=>{
@@ -46,13 +47,24 @@ app.post('/api/uploads',wrap(async(req,res)=>{
 }));
 app.get('/api/jobs',wrap(async(req,res)=>res.json(await Promise.all((await rows(req)).map(r=>B.displayJob(req.sb,r))))));
 app.post('/api/jobs',wrap(async(req,res)=>{
- if(req.body.url)throw B.fail('Link importing needs a separate download worker. Upload a video file instead.',503);
  const opts=B.options(req.body);if(opts.captions&&!process.env.OPENAI_API_KEY)throw B.fail('Automatic captions need an OpenAI API key configured by the administrator. Turn captions off to generate clips now.',503);
- const id=req.body.id;if(!/^[a-f0-9-]{36}$/i.test(id||''))throw B.fail('Upload a video first.');
- const all=await rows(req);if(all.some(r=>['running','queued'].includes(r.payload.status)))throw B.fail('A project is already running.',409);if(all.reduce((s,r)=>s+r.payload.clips.length,0)+opts.clips>30)throw B.fail('Free workspace limit is 30 clips. Delete old projects to free space.');
- const sourcePath=`${req.user.id}/${id}/source`;const files=B.checked(await req.sb.storage.from('videos').list(`${req.user.id}/${id}`,{limit:10}));const file=files.find(f=>f.name==='source');
- if(!file||file.metadata.size>B.MAX_BYTES)throw B.fail('Upload is missing or exceeds 50 MB.');
- const payload={title:B.safeFilename(req.body.name),status:'queued',progress:0,stage:'download',stages:{},options:opts,clips:[],sourcePath,sourceBytes:file.metadata.size,selection:'evenly_spaced'};
+ const sourceURL=req.body.url?downloader.youtubeURL(req.body.url):null;
+ if(sourceURL&&!downloader.available())throw B.fail('The YouTube worker is not installed on this server. Upload a video or ask the administrator to redeploy.',503);
+ const id=sourceURL?B.crypto.randomUUID():req.body.id;
+ if(!/^[a-f0-9-]{36}$/i.test(id||''))throw B.fail('Upload a video first.');
+ const all=await rows(req);
+ if(all.some(r=>['running','queued'].includes(r.payload.status)))throw B.fail('A project is already running. Wait or cancel it first.',409);
+ if(all.length>=30||all.reduce((s,r)=>s+r.payload.clips.length,0)+opts.clips>30)throw B.fail('Free workspace limit is 30 clips. Delete old projects to free space.');
+ const sourcePath=`${req.user.id}/${id}/source`;
+ let sourceBytes=B.MAX_BYTES;
+ if(!sourceURL){
+  const files=B.checked(await req.sb.storage.from('videos').list(`${req.user.id}/${id}`,{limit:10}));const file=files.find(f=>f.name==='source');
+  if(!file||!Number.isFinite(file.metadata?.size)||file.metadata.size<1||file.metadata.size>B.MAX_BYTES)throw B.fail('Upload is missing or exceeds 50 MB.');
+  sourceBytes=file.metadata.size;
+ }
+ const used=all.reduce((sum,r)=>sum+(r.payload.sourceBytes||0)+(r.payload.clips||[]).reduce((n,c)=>n+(c.bytes||0),0),0);
+ if(used+sourceBytes>500*1024*1024)throw B.fail('Storage limit reached. Delete old projects first.');
+ const payload={title:sourceURL?'YouTube video':B.safeFilename(req.body.name),status:'queued',progress:0,stage:'download',stages:{},options:opts,clips:[],sourcePath,sourceBytes,sourceType:sourceURL?'youtube':'upload',sourceURL,selection:'evenly_spaced'};
  const r=B.checked(await req.sb.from('jobs').insert({id,user_id:req.user.id,payload}).select().single());
  const task=processJob(req.sb,req.user,id);if(process.env.VERCEL){require('@vercel/functions').waitUntil(task);}else task.catch(console.error);
  res.status(202).json(await B.displayJob(req.sb,r));
@@ -63,7 +75,7 @@ app.delete('/api/jobs/:id',wrap(async(req,res)=>{await B.removeJob(req.sb,req.us
 app.delete('/api/jobs',wrap(async(req,res)=>{const data=(await rows(req)).filter(r=>!['queued','running'].includes(r.payload.status));for(const r of data)await B.removeJob(req.sb,req.user,r);res.json({removed:data.length});}));
 app.post('/api/jobs/:id/clips/:index',wrap(async(req,res)=>{const row=await B.getJob(req.sb,req.user,req.params.id);if(row.payload.status!=='done')throw B.fail('Wait for processing to finish.',409);res.json(await require('../lib/processor').editClip(req.sb,req.user,row,Number(req.params.index),req.body));}));
 app.get('/api/media/:id/:index/:kind',wrap(async(req,res)=>{const r=await B.getJob(req.sb,req.user,req.params.id);const clip=r.payload.clips.find(c=>String(c.index)===req.params.index);if(!clip)throw B.fail('Clip not found.',404);const key=req.params.kind==='thumb'?clip.thumbPath:clip.videoPath;const data=B.checked(await req.sb.storage.from('videos').createSignedUrl(key,3600,req.query.download?{download:`clippfy-${clip.index+1}.mp4`}:{}));res.redirect(302,data.signedUrl);}));
-app.get('/api/admin',wrap(async(req,res)=>{if(!B.checked(await req.sb.rpc('is_clippfy_admin')))throw B.fail('Administrator access required.',403);res.json({profiles:B.checked(await req.sb.from('profiles').select('id,name,created_at').limit(100)),jobs:B.checked(await req.sb.from('jobs').select('*').order('created_at',{ascending:false}).limit(100)).map(r=>({id:r.id,userId:r.user_id,title:r.payload.title,status:r.payload.status,error:r.payload.error,createdAt:r.created_at})),configuration:{transcription:!!process.env.OPENAI_API_KEY,payments:false,linkImport:false}});}));
+app.get('/api/admin',wrap(async(req,res)=>{if(!B.checked(await req.sb.rpc('is_clippfy_admin')))throw B.fail('Administrator access required.',403);res.json({profiles:B.checked(await req.sb.from('profiles').select('id,name,created_at').limit(100)),jobs:B.checked(await req.sb.from('jobs').select('*').order('created_at',{ascending:false}).limit(100)).map(r=>({id:r.id,userId:r.user_id,title:r.payload.title,status:r.payload.status,error:r.payload.error,createdAt:r.created_at})),configuration:{transcription:!!process.env.OPENAI_API_KEY,payments:false,linkImport:downloader.available(),downloadWorker:downloader.available()?downloader.VERSION:null}});}));
 app.use('/api',(req,res)=>res.status(404).json({error:'API endpoint not found.'}));
 app.use((err,req,res,next)=>{if(res.headersSent)return next(err);console.error(err.status?err.message:err);res.status(err.status||500).json({error:err.status?err.message:'Something went wrong on the server. Please try again.'});});
 module.exports=app;

@@ -127,7 +127,7 @@ $("#useUpload").addEventListener("click", () => { sourceSeg.set("file"); state.s
 // a YouTube-blocked project offers the upload instead: open Create on the file tab
 $("#jobUpload").addEventListener("click", () => $("#useUpload").click());
 // the full list of sites doesn't fit the link box on phones; the hint under it names them
-if (matchMedia("(max-width: 600px)").matches) $("#url").placeholder = "Paste a video link";
+$("#url").placeholder = "Paste a YouTube video or Shorts link";
 // range slider with a live value label; onChange fires once on release
 function slider(input, label, fmt, onInput, onChange) {
   const show = () => { label.textContent = fmt(+input.value); input.style.setProperty("--p", ((input.value - input.min) / (input.max - input.min)) * 100 + "%"); };
@@ -153,8 +153,14 @@ applyOptsToCreate(DEFAULTS);
 function sourceError() {
   if (state.source === "url") {
     const url = $("#url").value.trim();
-    if (!url) return "Paste a video link first: YouTube, Twitch, Kick, Google Drive or Dropbox.";
-    if (!/^https?:\/\/([\w-]+\.)*(youtube\.com|youtu\.be|twitch\.tv|kick\.com|drive\.google\.com|dropbox\.com)\//i.test(url)) return "We can't import from that site. Paste a YouTube, Twitch, Kick, Google Drive or Dropbox link, or upload the file.";
+    if (!url) return "Paste a single YouTube video URL first.";
+    try {
+      const u = new URL(url);
+      const hosts = ["youtube.com","www.youtube.com","m.youtube.com","music.youtube.com","youtu.be"];
+      const p = u.pathname.split("/").filter(Boolean);
+      const id = u.hostname === "youtu.be" && p.length === 1 ? p[0] : u.pathname === "/watch" ? u.searchParams.get("v") : p.length === 2 && ["shorts","embed","live"].includes(p[0]) ? p[1] : "";
+      if (!hosts.includes(u.hostname) || !/^https?:$/.test(u.protocol) || u.username || u.password || u.port || !/^[A-Za-z0-9_-]{11}$/.test(id || "")) return "Use a single YouTube watch, Shorts or youtu.be link, or upload a video file.";
+    } catch { return "Paste a valid YouTube video URL."; }
   } else if (!state.file) return "Choose a video file to upload first.";
   return "";
 }
@@ -193,14 +199,18 @@ $("#createForm").onsubmit = async (e) => {
   btn.classList.add("loading");
   $("span", btn).textContent = state.source === "file" ? "Uploading…" : "Starting…";
   try {
-    if (state.source !== "file") throw new Error("Link importing needs a download worker. Choose Upload and select a video up to 50 MB / 5 minutes.");
-    if (state.file.size > 50 * 1024 * 1024) throw new Error("Choose a video up to 50 MB.");
-    // Upload directly to private storage; video bytes never hit Vercel's 4.5 MB request limit.
-    const ticket = await api("/api/uploads", { json: { name: state.file.name, size: state.file.size } });
-    const uploaded = await fetch(ticket.uploadUrl, { method: "PUT", headers: { "Content-Type": state.file.type || "application/octet-stream" }, body: state.file });
-    if (!uploaded.ok) throw new Error("Upload failed. Check your connection and try again.");
     const payload = Object.fromEntries(fd.entries()); delete payload.file;
-    const job = await api("/api/jobs", { json: { ...payload, id: ticket.id, name: ticket.name } });
+    let job;
+    if (state.source === "url") {
+      job = await api("/api/jobs", { json: payload });
+    } else {
+      if (state.file.size > 50 * 1024 * 1024) throw new Error("Choose a video up to 50 MB.");
+      // Upload directly to private storage, not through Vercel's request-body limit.
+      const ticket = await api("/api/uploads", { json: { name: state.file.name, size: state.file.size } });
+      const uploaded = await fetch(ticket.uploadUrl, { method: "PUT", headers: { "Content-Type": state.file.type || "application/octet-stream" }, body: state.file });
+      if (!uploaded.ok) throw new Error("Upload failed. Check your connection and try again.");
+      job = await api("/api/jobs", { json: { ...payload, id: ticket.id, name: ticket.name } });
+    }
     $("#url").value = "";
     state.file = null;
     $("#dropText").textContent = "Drop a video here or browse";
@@ -1024,7 +1034,7 @@ function renderPlans() {
   if (!b) { box.innerHTML = ""; return; }
   if (b.free) {
     $("#plansTitle").textContent = "Your workspace";
-    box.innerHTML = '<article class="pp pp-current"><div><span class="pp-tag">Free access</span><h3>Upload, clip, edit & download</h3><p>30 stored clips · 500 MB workspace · sources up to 50 MB / 5 minutes. Export: 720 × 1280 MP4. Clips are evenly spaced excerpts, not AI-ranked highlights. Link importing and paid plans are not configured. Automatic captions require an administrator-provided OpenAI key.</p></div><a class="btn btn-primary" href="#create">Create clips</a></article>';
+    box.innerHTML = '<article class="pp pp-current"><div><span class="pp-tag">Free access</span><h3>Upload, clip, edit & download</h3><p>30 stored clips · 500 MB workspace · sources up to 50 MB / 5 minutes. Export: 720 × 1280 MP4. Clips are evenly spaced excerpts, not AI-ranked highlights. YouTube imports support public recorded videos up to 5 minutes / 50 MB (downloaded up to 480p); YouTube may block the server. Other sites and paid plans are not configured. Automatic captions require an administrator-provided OpenAI key.</p></div><a class="btn btn-primary" href="#create">Create clips</a></article>';
     return;
   }
   const P = b.plans;
@@ -1185,9 +1195,11 @@ addEventListener("focus", async () => {
 });
 
 // Prefer the working upload flow; no changes to the existing layout.
-$("#useUpload").click();
+// Start on the YouTube link tab; the upload fallback remains one click away.
+sourceSeg.set("url"); state.source = "url";
+$$(".pane").forEach(p => p.hidden = p.dataset.pane !== "url");
 const sourceHint = document.createElement("p");
 sourceHint.className = "hint";
-sourceHint.textContent = "Upload up to 50 MB / 5 minutes. 720p vertical MP4 exports. Clips use evenly spaced excerpts. Keep this page open to follow progress. Captions need an OpenAI key; turn them off if unavailable. Caption exports currently use static Anton text; advanced animation previews are not exported.";
+sourceHint.textContent = "YouTube links and uploads: up to 50 MB / 5 minutes. Public recorded videos only; YouTube may block cloud downloads. Use only videos you own or have permission to use. 720p vertical MP4 exports. Clips use evenly spaced excerpts. Keep this page open to follow progress. Captions need an OpenAI key; turn them off if unavailable. Caption exports currently use static Anton text; advanced animation previews are not exported.";
 $("#createForm").prepend(sourceHint);
 const recovery = document.createElement("a"); recovery.href="/reset"; recovery.textContent="Forgot password?"; recovery.className="btn btn-quiet btn-sm"; $("#authForm").append(recovery);

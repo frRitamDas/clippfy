@@ -4,7 +4,7 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 300,
-      "includeFiles": "{node_modules/@ffmpeg-installer/linux-x64/ffmpeg,fonts/**}"
+      "includeFiles": "{node_modules/@ffmpeg-installer/linux-x64/ffmpeg,fonts/**,vendor/yt-dlp_linux,vendor/youtube-smoke.json}"
     }
   },
   "rewrites": [
