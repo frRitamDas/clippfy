@@ -3,6 +3,8 @@ const B=require('../lib/backend');
 const {processJob}=require('../lib/processor');
 const app=express();
 app.disable('x-powered-by');app.set('trust proxy',1);
+// Keep API routing stable across Vercel's internal rewrite behavior.
+app.use((req,res,next)=>{const url=new URL(req.url,'http://internal');if(url.searchParams.has('route')){const route=url.searchParams.get('route');url.searchParams.delete('route');req.url='/api/'+route+(url.searchParams.size?'?'+url.searchParams:'');}next();});
 app.use((req,res,next)=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');if(!['GET','HEAD','OPTIONS'].includes(req.method)&&req.headers.origin){let origin;try{origin=new URL(req.headers.origin).host;}catch{}if(origin!==req.headers.host)return res.status(403).json({error:'Cross-site request rejected.'});}next();});
 app.use(express.json({limit:'100kb'}));
 const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next);
