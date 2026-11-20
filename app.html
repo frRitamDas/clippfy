@@ -2493,14 +2493,14 @@ body.unpaid .sb-new, body.unpaid .sb-nav, body.unpaid .sb-search, body.unpaid .q
                   <svg class="yt"><use href="#i-yt"></use></svg>
                   <input type="url" id="url" placeholder="YouTube, Twitch, Kick, Google Drive or Dropbox link" aria-label="Video link">
                 </label>
-                <small class="hint url-hint">YouTube often blocks downloads. For YouTube videos, <button type="button" class="url-hint-btn" id="useUpload">upload the video file</button> instead: it works every time. Twitch, Kick, Drive and Dropbox links work as usual.</small>
+                <small class="hint url-hint">Link importing needs a download worker. Please <button type="button" class="url-hint-btn" id="useUpload">upload the video file</button> to generate clips now.</small>
               </div>
               <div class="pane" data-pane="file" hidden="">
                 <label class="drop" id="drop">
                   <input type="file" id="file" accept="video/*,.mkv" hidden="">
                   <svg><use href="#i-upload"></use></svg>
                   <b id="dropText">Drop a video here or browse</b>
-                  <span>MP4, MOV, MKV or WEBM, up to 8 GB</span>
+                  <span>MP4, MOV, MKV or WEBM, up to 50 MB / 5 minutes</span>
                 </label>
               </div>
             </div>
