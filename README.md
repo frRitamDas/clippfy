@@ -23,7 +23,7 @@ Local server binds to `0.0.0.0:3000`. Vercel serves only the `public` build outp
 2. Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` in Vercel. These are configured on `clippfyediting`. The app deliberately does not need a service-role key.
 3. Email confirmation remains enabled. Set Auth site URL to `https://clippfyediting.vercel.app` and allow redirects to `/app` and `/reset` (already configured on the connected project). For production volumes, configure a custom SMTP provider in Supabase; its default mail service has restrictive delivery/rate limits.
 4. Sign up as `ritam73592@gmail.com` and verify that email. The database checks the verified Auth identity for admin authorization, not user-editable metadata. Admin dashboard: `/admin`.
-5. Optional: add `OPENAI_API_KEY` to the Vercel server environment and redeploy for Whisper transcription. Do not put it in frontend assets. Until configured, leave captions OFF; requests for automatic captions fail explicitly before processing.
+5. Optional: add `GROQ_API_KEY` and `TRANSCRIPTION_PROVIDER=groq` to the Vercel server environment and redeploy for free-tier Whisper transcription (subject to provider quotas). See [FREE_SETUP.md](FREE_SETUP.md). Do not put it in frontend assets. Until configured, leave captions OFF; requests for automatic captions fail explicitly before processing.
 
 ## Working flow
 
@@ -43,7 +43,7 @@ This is **not yet the complete commercial AI product described by the original o
 - Highlights are evenly spaced excerpts, not semantic AI-selected or virality-ranked moments. Scores are not fabricated.
 - YouTube import is implemented, but **not every YouTube URL can work**: private, age-restricted, members-only, region-restricted, live and upcoming videos are rejected. YouTube can block cloud/datacenter IPs, including Vercel. Bot/sign-in/403/429 failures are surfaced explicitly with an upload fallback; no account cookies or access-control bypasses are used. Other websites and playlists are not supported.
 - Long recordings still need a dedicated, long-running processing service rather than the bounded Vercel worker. No external always-on worker hosting account has been provisioned.
-- Transcription requires `OPENAI_API_KEY`. The current exporter provides static, grouped Anton captions in the selected basic color; the original advanced animated caption preview is illustrative and does not yet match all export controls.
+- Transcription supports Groq free-tier (`GROQ_API_KEY`, `TRANSCRIPTION_PROVIDER=groq`). Paid OpenAI requires an explicit `TRANSCRIPTION_PROVIDER=openai`; it is never selected automatically. The current exporter provides static, grouped Anton captions in the selected basic color; the original advanced animated caption preview is illustrative and does not yet match all export controls.
 - Paid checkout, subscriptions, trial offers and refunds are not connected. The workspace is explicitly free; no payment success is simulated. Google OAuth is hidden because no provider credentials exist.
 - Profile email changes are currently rejected rather than silently changing an unverified identity. Name changes and password recovery are supported.
 - Vercel's background function runtime is capped at 300 seconds. The UI marks abandoned jobs as failed after 6 minutes when retrieved. Large/high-resolution inputs may time out: retry shorter videos. Jobs do not survive infrastructure failure and there is no durable queue/retry scheduler yet.
@@ -77,7 +77,7 @@ docker run --rm -p 8080:8080 \
   clippfy-worker
 ```
 
-1. Deploy that image behind an HTTPS URL on your chosen host, using the same Supabase project as the website. Optional `OPENAI_API_KEY` belongs in that host's secret environment too if you want automatic captions there. No Supabase service-role key is needed.
+1. Deploy that image behind an HTTPS URL on your chosen host, using the same Supabase project as the website. Put `TRANSCRIPTION_PROVIDER=groq` and `GROQ_API_KEY` in that host's secret environment too if you want free-tier captions there. No Supabase service-role key is needed.
 2. Check the host's `/health` endpoint. It reports downloader version, active jobs and capacity (two jobs per container).
 3. Set `DOWNLOAD_WORKER_URL=https://YOUR_WORKER_HOST/` in Vercel and redeploy the website. The frontend continues to call only same-origin `/api/jobs`; the API forwards the authenticated user's short-lived Supabase JWT server-to-server. HTTPS redirects are refused, so JWTs are not forwarded to another origin.
 4. The container independently validates the JWT with Supabase, checks job ownership via RLS, and claims only queued jobs. Saturated/unreachable workers produce explicit errors rather than silently leaving a spinner forever. SIGTERM stops new dispatches and waits for current work to finish.

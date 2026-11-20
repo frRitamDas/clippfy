@@ -828,7 +828,7 @@ const lockEl = $("#lock");
 let authMode = "login";
 const COPY = {
   login: { title: "Welcome back", sub: "Sign in to open your studio.", btn: "Sign in" },
-  signup: { title: "Create your account", sub: "Takes ten seconds. Then start your full-access trial for just $1.", btn: "Create account" },
+  signup: { title: "Create your account", sub: "Create your free workspace. The $1 trial is coming soon.", btn: "Create account" },
 };
 const authSeg = seg($("#authSeg"), "login", setAuthMode);
 
@@ -1034,7 +1034,7 @@ function renderPlans() {
   if (!b) { box.innerHTML = ""; return; }
   if (b.free) {
     $("#plansTitle").textContent = "Your workspace";
-    box.innerHTML = '<article class="pp pp-current"><div><span class="pp-tag">Free access</span><h3>Upload, clip, edit & download</h3><p>30 stored clips · 500 MB workspace · sources up to 50 MB / 5 minutes. Export: 720 × 1280 MP4. Clips are evenly spaced excerpts, not AI-ranked highlights. YouTube imports support public recorded videos up to 5 minutes / 50 MB (downloaded up to 480p); YouTube may block the server. Other sites and paid plans are not configured. Automatic captions require an administrator-provided OpenAI key.</p></div><a class="btn btn-primary" href="#create">Create clips</a></article>';
+    box.innerHTML = '<article class="pp pp-trial"><div><span class="pp-tag">$1 trial · coming soon</span><h3>Your $1 trial offer</h3><p>Paid checkout is not enabled yet. Use the free workspace below now; no payment is required.</p></div></article><article class="pp pp-current"><div><span class="pp-tag">Free access</span><h3>Upload, clip, edit & download</h3><p>30 stored clips · 500 MB workspace · sources up to 50 MB / 5 minutes. Export: 720 × 1280 MP4. Clips are evenly spaced excerpts, not AI-ranked highlights. YouTube imports support public recorded videos up to 5 minutes / 50 MB (downloaded up to 480p); YouTube may block the server. Other sites and paid plans are not configured. Automatic captions support a Groq free-tier key; OpenAI is optional and never selected automatically.</p></div><a class="btn btn-primary" href="#create">Create clips</a></article>';
     return;
   }
   const P = b.plans;
