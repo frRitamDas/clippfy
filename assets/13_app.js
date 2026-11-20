@@ -495,7 +495,7 @@ function renderJob(job, animate) {
   const errBox = $("#jobError");
   errBox.hidden = job.status !== "failed";
   if (job.status === "failed") errBox.textContent = job.error === "Cancelled" ? "You cancelled this project." : job.error || "The worker stopped without an error message. Check the server console.";
-  $("#jobUpload").hidden = !(job.status === "failed" && job.errorCode === "yt_blocked");
+  $("#jobUpload").hidden = !(job.status === "failed" && (job.sourceType === "youtube" || job.errorCode === "yt_blocked"));
   const note = $("#jobNote"), got = job.clips.length, asked = job.options.clips;
   note.hidden = !(job.status === "done" && got && got < asked);
   if (!note.hidden) note.textContent = `You asked for ${asked} clips. This video is ${fmtTime(job.duration)} long, so ${got} fit without repeating the same moment. Only ${got === 1 ? "this clip" : "these " + got} counted toward your plan. Longer videos give more clips.`;

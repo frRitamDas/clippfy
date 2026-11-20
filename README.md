@@ -64,3 +64,23 @@ The worker runs without a shell, ignores system/user yt-dlp configuration, disab
 Each Vercel build runs `scripts/smoke-youtube.js`: download yt-dlp's public test fixture and render a one-second vertical MP4. The result is exposed on `/status.html` through `/api/health` as `youtubeSmoke`. A failed external test does **not** prevent deploying the working upload fallback, and an installed worker is never reported as a successful YouTube test. A successful build-machine test is not proof that Lambda's different egress IP will be accepted. A signed-in production YouTube project remains the definitive runtime end-to-end check.
 
 For local use, install a compatible yt-dlp executable and set `YTDLP_PATH` to its absolute path, or run `node scripts/install-downloader.js` to fetch the verified standalone version. For offline/local static-build tests only, `SKIP_DOWNLOADER_INSTALL=1 npm run build` skips this download; Vercel ignores that bypass and always installs/verifies its binary. The local sandbox cannot reach YouTube, so downloader network tests run from Vercel rather than being falsely reported as local successes.
+
+## Optional separate container worker
+
+`worker/Dockerfile` and `worker/server.js` provide a portable worker for a container/VPS host **you provision**. This repository does not create a new hosting account or spend money on a server. The container adapter changes where the job executes; it does not yet raise the 5-minute/50-MB source limits, add a durable retry queue, or guarantee YouTube will accept that host's network.
+
+```sh
+docker build -f worker/Dockerfile -t clippfy-worker .
+docker run --rm -p 8080:8080 \
+  -e SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
+  -e SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_KEY \
+  clippfy-worker
+```
+
+1. Deploy that image behind an HTTPS URL on your chosen host, using the same Supabase project as the website. Optional `OPENAI_API_KEY` belongs in that host's secret environment too if you want automatic captions there. No Supabase service-role key is needed.
+2. Check the host's `/health` endpoint. It reports downloader version, active jobs and capacity (two jobs per container).
+3. Set `DOWNLOAD_WORKER_URL=https://YOUR_WORKER_HOST/` in Vercel and redeploy the website. The frontend continues to call only same-origin `/api/jobs`; the API forwards the authenticated user's short-lived Supabase JWT server-to-server. HTTPS redirects are refused, so JWTs are not forwarded to another origin.
+4. The container independently validates the JWT with Supabase, checks job ownership via RLS, and claims only queued jobs. Saturated/unreachable workers produce explicit errors rather than silently leaving a spinner forever. SIGTERM stops new dispatches and waits for current work to finish.
+5. Test an actual signed-in YouTube project from this host. Vercel's build-time smoke test still reports **Vercel build egress**, not your separate worker's network. Do not treat an installed binary, healthy HTTP endpoint, or mock-based tests as a successful YouTube download.
+
+**Observed deployment result (20 November 2026):** yt-dlp installed and launched successfully on Vercel, but YouTube rejected the current upstream test fixture with “Sign in to confirm you’re not a bot.” The built-in import path is implemented; successful live YouTube ingestion has **not** been established on that hosting network. Uploads remain the fallback. A different host may also be blocked; test before committing to it.
