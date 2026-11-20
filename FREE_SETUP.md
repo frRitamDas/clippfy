@@ -35,7 +35,7 @@ A real test from Vercel returned **“Sign in to confirm you’re not a bot.”*
 
 Practical options:
 
-1. **Available now:** upload your own video file (up to 50 MB / 5 minutes), then generate clips. This avoids the YouTube download request entirely.
+1. **Available now:** upload your own video file (up to 50 MB; no fixed source-duration cap, but execution limits apply), then generate clips. This avoids the YouTube download request entirely.
 2. **Use the existing separate worker:** deploy `worker/Dockerfile` on a server/network you control, with the same Supabase URL and publishable key. See README for build/run commands. After it has a trusted HTTPS URL, set `DOWNLOAD_WORKER_URL` on Vercel and redeploy. Test an actual import before relying on that host; other datacenter IPs can also be blocked.
 3. **For testing without renting a server:** run the worker on your own Linux x64 machine with Docker, using your own internet connection. Expose it only through a trusted HTTPS tunnel you configure, then set that tunnel's URL as `DOWNLOAD_WORKER_URL`. Your machine and tunnel must remain running, and tunnel URLs may change. This is a testing arrangement, not reliable public production hosting, and YouTube may still refuse it. Don't put localhost in Vercel's environment; localhost there refers to Vercel, not your computer.
 

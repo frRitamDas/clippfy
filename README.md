@@ -28,10 +28,10 @@ Local server binds to `0.0.0.0:3000`. Vercel serves only the `public` build outp
 ## Working flow
 
 - Sign up, verify email, sign in; session refresh uses HttpOnly, SameSite cookies. Recovery links are handled at `/reset`.
-- Paste a public, recorded YouTube watch/Shorts/youtu.be URL. The background worker validates it, checks metadata, downloads up to 480p, persists the source privately, then runs the same clipping pipeline. Sources must be at most 5 minutes and 50 MB. Only import videos you own or have permission to use.
+- Paste a public, recorded YouTube watch/Shorts/youtu.be URL. The background worker validates it, checks metadata, downloads up to 480p, persists the source privately, then runs the same clipping pipeline. Sources must be at most 50 MB; there is no default source-duration cap, but execution limits apply. Only import videos you own or have permission to use.
 - Or upload directly to a private Supabase bucket with a signed upload ticket, avoiding Vercel's request body limit.
 - Generate 1–10 evenly spaced, non-overlapping excerpts; real FFmpeg vertical 720 × 1280 H.264/AAC MP4s and JPEG thumbnails.
-- Source limit: 50 MB / 5 minutes. Output segments: up to 60 seconds. The free workspace allows 30 stored clips and approximately 500 MB. Delete projects to reclaim storage.
+- Source limit: 50 MB / no fixed duration cap (execution limits apply). Output segments: up to 60 seconds. The free workspace allows 30 stored clips and approximately 500 MB. Delete projects to reclaim storage.
 - View project progress, cancel, browse clips, download individually/all, copy available transcripts, update profile name, delete finished/failed projects.
 - `/editor?job=UUID&clip=0` supports destructive trimming and a manual text overlay, with a fresh rendered downloadable MP4. Download a backup before editing.
 - The admin dashboard lists members, recent project status/errors, and missing provider configuration.
@@ -67,7 +67,7 @@ For local use, install a compatible yt-dlp executable and set `YTDLP_PATH` to it
 
 ## Optional separate container worker
 
-`worker/Dockerfile` and `worker/server.js` provide a portable worker for a container/VPS host **you provision**. This repository does not create a new hosting account or spend money on a server. The container adapter changes where the job executes; it does not yet raise the 5-minute/50-MB source limits, add a durable retry queue, or guarantee YouTube will accept that host's network.
+`worker/Dockerfile` and `worker/server.js` provide a portable worker for a container/VPS host **you provision**. This repository does not create a new hosting account or spend money on a server. The container adapter changes where the job executes; it does not raise the 50-MB source-size or 265-second processing limits, add a durable retry queue, or guarantee YouTube will accept that host's network.
 
 ```sh
 docker build -f worker/Dockerfile -t clippfy-worker .
