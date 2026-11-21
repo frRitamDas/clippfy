@@ -1,0 +1,7 @@
+/* Regular landing page: pricing disclosure and small-screen layout fixes. */
+.pricing-preview-note{padding:14px 20px;margin:20px 0;border-radius:14px;border:1px solid rgba(209,254,23,.25);background:var(--lime-soft);font-size:13px;line-height:1.7;color:var(--ink-2)}
+.tr-timer{display:none!important}.tr-wrap .tr-right{justify-content:center}.pc-pill{display:none!important}.rating-above .verified{color:var(--muted)}
+.review-source-note{max-width:900px;margin:0 auto;padding:14px 20px;font-size:12px;line-height:1.7;text-align:center;color:var(--muted)}
+@media(max-width:480px){.topnav-in{gap:10px}.nav-cta{gap:10px}.topnav .btn{padding-inline:14px;font-size:13px}.nav-plain{font-size:13px}}
+@media(max-width:480px){.hero h1{font-size:clamp(28px,8vw,38px);min-width:0;max-width:100%;width:100%;letter-spacing:-.045em}.hero .h1-sub{white-space:normal}}
+@media(max-width:480px){.hero h1 .pill-hl{font-size:inherit;white-space:normal}.hero h1 .h1-sub{white-space:normal}}

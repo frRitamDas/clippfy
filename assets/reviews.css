@@ -1,0 +1,146 @@
+/* Uploaded reviews design, isolated from the Studio and landing page theme. */
+#reviews {
+  color-scheme: light;
+
+  --bg: #ffffff;
+  --s1: #ffffff;
+
+  --ink: #18181b;
+  --ink-2: #41434a;
+  --muted: #7b7f87;
+
+  --on-lime: #0c0c0d;
+  --lime: #d1fe17;
+  --hairline: rgba(15, 23, 42, .08);
+
+  --font: "Geist", "Segoe UI", system-ui, sans-serif;
+  --display: "Montserrat", "Geist", system-ui, sans-serif;
+
+ font-family:var(--font);font-size:15px;line-height:1.55;color:var(--ink);padding:12px 0 88px;position:relative; }
+#reviews, #reviews * {box-sizing:border-box}
+#reviews.voices{
+  overflow: hidden;
+  background: var(--bg);
+  padding-top: 12px;              /* tightened so the marquee sits close to the hero */
+}
+
+/* edge-fade mask so cards drift in and out of view */
+#reviews .marquee{
+  display: flex;
+  overflow: hidden;
+  padding: 10px 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+/* the track holds 2x the cards; JS clones them and sets the duration */
+#reviews .marquee .track{
+  display: flex;
+  gap: 16px;
+  padding-right: 16px;
+  width: max-content;
+  align-items: stretch;
+  animation: clippfy-reviews-marquee 38s linear infinite;
+}
+
+/* hovering keeps the row moving (matches the original) */
+#reviews .marquee:hover .track{ animation-play-state: running; }
+
+/* second row runs the other way, a touch slower */
+#reviews .marquee.reverse .track{
+  animation-direction: reverse;
+  animation-duration: 34s;
+}
+
+#reviews.voices .marquee + .marquee{ margin-top: 6px; }
+
+@keyframes clippfy-reviews-marquee { to { transform: translateX(-50%); } }
+
+/* ---------- review card ---------- */
+#reviews .tcard{
+  width: 360px;
+  margin: 0;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 24px;
+  border-radius: 22px;
+  background: var(--s1);
+  border: 1px solid var(--hairline);
+  box-shadow: 0 12px 28px -18px rgba(15, 23, 42, .18);
+}
+
+#reviews .tc-top{ display: flex; justify-content: space-between; align-items: center; }
+
+#reviews .ystars{ color: #f5b400; font-size: 24px; letter-spacing: 2px; }
+
+#reviews .qmark{ width: 30px; height: 30px; color: rgba(15, 23, 42, .1); flex: none; }
+
+#reviews .tcard blockquote{
+  margin: 0;
+  flex: 1;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+#reviews .tcard figcaption{ display: flex; align-items: center; gap: 10px; }
+
+#reviews .tcard .pfp{
+  width: 44px;
+  height: 44px;
+  border-width: 2px;
+  flex: none;
+}
+
+#reviews .tcard figcaption div{ flex: 1; min-width: 0; }
+
+#reviews .tcard figcaption b{ display: block; font-size: 15.5px; font-weight: 600; }
+
+#reviews .tcard figcaption small{
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+#reviews .tcard figcaption small svg{ width: 17px; height: 17px; color: var(--lime); }
+#reviews .tcard figcaption small svg path{ stroke: var(--on-lime); }
+
+/* earned-amount badge, right aligned in the card footer */
+#reviews .tcard em{
+  font-style: normal;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 22px;
+  color: #4ade80;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- avatar ---------- */
+#reviews .pfp{
+  display: block;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  border: 3px solid var(--s1);
+  box-shadow: 0 4px 12px -4px rgba(15, 23, 42, .16);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ==========================================================================
+   RESPONSIVE + MOTION
+   ========================================================================== */
+@media (max-width: 860px) {
+#reviews{ padding: 64px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+#reviews .marquee .track{ animation: none; }
+}

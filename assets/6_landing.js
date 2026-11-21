@@ -23,18 +23,7 @@ document.addEventListener("contextmenu", (e) => { if (e.target.closest("img, .pf
 document.addEventListener("dragstart", (e) => { if (e.target.tagName === "IMG") e.preventDefault(); });
 $$("img").forEach((i) => i.setAttribute("draggable", "false"));
 
-// ---- testimonials: duplicate for a seamless loop ----
-// One half must be wider than the widest the window can get (screen width), else the row runs out and shows empty space.
-// The half is then doubled so translateX(-50%) loops with no seam; duration keeps the speed the same however long it is.
-$$(".marquee .track").forEach((t) => {
-  const set = t.innerHTML;
-  const setW = t.scrollWidth + 16;
-  const need = Math.max(innerWidth, screen.width || 0, screen.height || 0, 1920) + setW;
-  const copies = Math.max(1, Math.min(30, Math.ceil(need / setW)));
-  t.innerHTML = set.repeat(copies * 2);
-  [...t.children].slice(t.children.length / 2).forEach((c) => c.setAttribute("aria-hidden", "true"));
-  t.style.animationDuration = Math.round((setW * copies) / (t.closest(".reverse") ? 34 : 38)) + "s";
-});
+// Review marquee is initialized once by reviews.js.
 
 // ---- live counters: grow from a fixed start so they keep climbing across reloads ----
 (() => {

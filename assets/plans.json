@@ -1,6 +1,36 @@
 {
-  "starter": {"name":"Starter","price":9,"yearPrice":90,"clips":30,"storage":1,"uploads":true,"live":false,"maxRes":"720p"},
-  "clipper": {"name":"Creator","price":19,"yearPrice":190,"clips":100,"storage":5,"uploads":true,"live":false,"maxRes":"720p"},
-  "pro": {"name":"Pro","price":39,"yearPrice":390,"clips":300,"storage":10,"uploads":true,"live":false,"maxRes":"720p"},
-  "trial": {"clips":3,"storage":1}
+  "starter": {
+    "name": "Starter",
+    "price": 8,
+    "yearPrice": 96,
+    "clips": 30,
+    "storage": 1,
+    "uploads": true,
+    "live": false,
+    "maxRes": "720p"
+  },
+  "clipper": {
+    "name": "Creator",
+    "price": 19,
+    "yearPrice": 108,
+    "clips": 100,
+    "storage": 5,
+    "uploads": true,
+    "live": false,
+    "maxRes": "720p"
+  },
+  "pro": {
+    "name": "Pro",
+    "price": 150,
+    "yearPrice": 588,
+    "clips": 300,
+    "storage": 10,
+    "uploads": true,
+    "live": false,
+    "maxRes": "720p"
+  },
+  "trial": {
+    "clips": 3,
+    "storage": 1
+  }
 }
