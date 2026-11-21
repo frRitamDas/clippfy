@@ -21,3 +21,15 @@ test('requested count is honored when at least five seconds per clip are availab
 
 test('uploads have no fixed 50 MB application cap, but reject invalid sizes',()=>{assert.equal(B.MAX_UPLOAD_BYTES,Infinity);assert.equal(B.validateUploadSize(512*1024*1024),512*1024*1024);for(const size of [0,-1,Infinity,NaN,'100',1.5,Number.MAX_SAFE_INTEGER+1])assert.throws(()=>B.validateUploadSize(size));});
 test('tracked storage totals include source and generated clip bytes',()=>{assert.equal(B.storageUsage([{payload:{sourceBytes:100,clips:[{bytes:20},{bytes:30}]}},{payload:{sourceBytes:40,clips:[]}}]),190);assert.equal(B.storageUsage([{payload:{clips:[{}]}},{}]),0);});
+
+test('source ranges are validated and bounded by actual video duration',()=>{
+ const opts=B.options({clips:3,maxLen:10,sourceStart:'20',sourceEnd:'50',crop:'fit'});
+ assert.equal(opts.sourceStart,20);assert.equal(opts.crop,'fit');
+ const parts=P.selectedRanges(100,opts);assert.equal(parts[0].start,20);assert.equal(parts.at(-1).start+parts.at(-1).duration,50);
+ assert.equal(P.selectedRanges(35,opts).at(-1).start+P.selectedRanges(35,opts).at(-1).duration,35);
+ for(const data of [{sourceStart:-1},{sourceStart:10,sourceEnd:5},{sourceEnd:'NaN'},{sourceStart:Infinity}])assert.throws(()=>B.options({clips:1,maxLen:10,...data}));
+ assert.throws(()=>P.selectedRanges(10,opts),/outside/);
+});
+test('all framing modes execute in FFmpeg',async()=>{
+ for(const crop of ['center','left','right','fit']){const log=await P.run(['-f','lavfi','-i','color=c=blue:s=320x240:d=0.1','-vf',P.framingFilter(crop),'-frames:v','1','-threads','1','-f','null','-']);assert(log.includes('720x1280'));}
+});

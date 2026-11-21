@@ -2399,7 +2399,8 @@ body.unpaid .sb-new, body.unpaid .sb-nav, body.unpaid .sb-search, body.unpaid .q
 .pp-toggle button { padding: 8px 18px; border-radius: 10px; border: 0; background: none; color: var(--ink-2); font: inherit; font-weight: 600; cursor: pointer; }
 .pp-toggle button.on { background: var(--lime); color: #141a0b; }
 .pp-bill { margin: -10px 0 12px; color: var(--muted); font-size: 12.5px; }
-</style><link rel="stylesheet" href="/assets/storage.css"><link rel="stylesheet" href="/assets/script-studio.css"><link rel="stylesheet" href="/assets/clippfy-ui.css"></head>
+</style><link rel="stylesheet" href="/assets/storage.css"><link rel="stylesheet" href="/assets/script-studio.css"><link rel="stylesheet" href="/assets/clippfy-ui.css"><link rel="stylesheet" href="/assets/refinement.css">
+</head>
 <body class="studio locked">
 <script src="/assets/integration/offer-preview.js"></script>
 
@@ -2512,6 +2513,8 @@ body.unpaid .sb-new, body.unpaid .sb-nav, body.unpaid .sb-search, body.unpaid .q
               <div class="opt range-opt"><span class="opt-title">Max length <b id="optLenVal">58s</b></span><input type="range" class="srange" id="optLen" min="5" max="59" step="1" aria-label="Max clip length in seconds"></div>
             </div>
 
+            <details class="clip-advanced"><summary>Range & framing</summary><div class="clip-controls"><label>Start (seconds)<input id="sourceStart" type="number" min="0" step="0.1" value="0"></label><label>End (seconds)<input id="sourceEnd" type="number" min="0.5" step="0.1" placeholder="End of video"></label><label class="clip-framing">Vertical framing<select id="sourceFraming"><option value="center">Center crop</option><option value="left">Keep left</option><option value="right">Keep right</option><option value="fit">Fit entire frame</option></select></label></div><p>Times use the original video. Fit preserves the full frame with black bars.</p></details>
+
             <div class="create-foot">
               <button type="button" class="btn btn-primary btn-lg" id="nextBtn"><span>Next</span><svg class="arrow"><use href="#i-arrow"></use></svg></button>
             </div>
@@ -2585,22 +2588,21 @@ body.unpaid .sb-new, body.unpaid .sb-nav, body.unpaid .sb-search, body.unpaid .q
       <div class="clip-grid" id="libGrid"></div>
     </section>
 
-    <section class="view" data-view="scripts" hidden>
+    <section class="view" data-view="scripts" aria-label="Script writer" hidden>
       <div class="script-studio">
-        <header class="script-hero"><div><span class="eyebrow">Your next video starts here</span><h1>Big ideas.<br><span>Better scripts.</span></h1><p>Skip the blank page. Turn a rough idea into something<br class="script-desktop-break"> you can actually hit record on.</p></div><div class="script-hero-aside"><span class="script-chip cf-neon-chip"><i></i>AI-powered creative workspace</span><ol class="script-steps" aria-label="How it works"><li class="on"><b>01</b><span>Write a brief</span></li><li><b>02</b><span>Generate a draft</span></li><li><b>03</b><span>Make it yours</span></li></ol></div></header>
         <div class="script-layout"><form id="scriptForm" class="script-panel glass">
-          <div class="script-panel-heading"><div><span class="script-kicker">The brief</span><h2>Your creative brief</h2></div><span class="script-tool-icon" aria-hidden="true"><svg><use href="#i-edit"></use></svg></span></div>
-          <label>What's your video about?<textarea class="cf-field" name="topic" required minlength="10" maxlength="2500" rows="4" placeholder="A topic, a story, a product. Give us the angle — we'll help with the words."></textarea><span class="script-field-bottom"><span>A little detail goes a long way.</span><span id="scriptTopicCount">0 / 2,500</span></span></label>
-          <div class="script-examples"><span>Try an idea</span><button type="button" data-idea="Teach beginner creators three ways to improve phone audio without buying new equipment.">Teach a skill ↗</button><button type="button" data-idea="Tell a relatable story about a creator overcoming the fear of publishing their first video. Make clear it is a fictional example.">Tell a story ↗</button><button type="button" data-idea="Explain how a reusable water bottle with a removable infuser works. Avoid unsupported environmental or health claims.">Show a product ↗</button></div>
+
+          <label>Topic<textarea class="cf-field" name="topic" required minlength="10" maxlength="2500" rows="4" placeholder="What should the video cover?"></textarea><span class="script-field-bottom"><span id="scriptTopicCount">0 / 2,500</span></span></label>
+          <div class="script-examples"><button type="button" data-idea="Teach beginner creators three ways to improve phone audio without buying new equipment.">Teach a skill ↗</button><button type="button" data-idea="Tell a relatable story about a creator overcoming the fear of publishing their first video. Make clear it is a fictional example.">Tell a story ↗</button><button type="button" data-idea="Explain how a reusable water bottle with a removable infuser works. Avoid unsupported environmental or health claims.">Show a product ↗</button></div>
           <div class="script-form-divider"></div>
-          <label>Your audience<input class="cf-field" name="audience" required maxlength="160" value="Beginner creators" placeholder="Who are you talking to?"></label>
-          <div class="script-options"><label>The vibe<select class="cf-field" name="tone"><option value="educational">Educational</option><option value="storytelling">Storytelling</option><option value="energetic">Energetic</option><option value="professional">Professional</option></select></label><label>Video length<select class="cf-field" name="seconds"><option value="15">15 seconds</option><option value="30" selected>30 seconds</option><option value="60">60 seconds</option></select></label></div>
+          <label>Audience<input class="cf-field" name="audience" required maxlength="160" value="Beginner creators" placeholder="Who are you talking to?"></label>
+          <div class="script-options"><label>Tone<select class="cf-field" name="tone"><option value="educational">Educational</option><option value="storytelling">Storytelling</option><option value="energetic">Energetic</option><option value="professional">Professional</option></select></label><label>Video length<select class="cf-field" name="seconds"><option value="15">15 seconds</option><option value="30" selected>30 seconds</option><option value="60">60 seconds</option></select></label></div>
           <label>Language<input class="cf-field" name="language" required maxlength="60" value="English" placeholder="English, Hindi, Bengali…"></label>
           <p id="scriptError" class="script-error" role="status" aria-live="polite"></p>
-          <button type="submit" class="btn btn-primary" id="scriptGenerate">Generate my script ↗</button>
-          <p class="script-privacy"><svg aria-hidden="true"><use href="#i-bolt"></use></svg>Powered by Groq · free-tier quotas apply</p><details class="script-disclosure"><summary>Before you generate</summary><p>Your brief is sent to Groq. Don't include confidential information. Generates text, not video. No paid OpenAI API fallback. Review facts and rights before publishing. Drafts stay on this page; download to keep them.</p></details>
-        </form><section class="script-output" aria-label="Generated script" aria-busy="false"><div id="scriptLoading" class="script-loading glass" hidden role="status"><span class="script-loading-icon" aria-hidden="true">✦</span><h2>Turning your idea into a draft.</h2><p>Writing hooks, shaping the script and planning the shots.<br>Keep this page open. Your previous draft is kept below.</p><div class="script-loading-line"></div></div><div id="scriptEmpty" class="script-empty glass"><div class="script-empty-top"><span class="script-kicker">Your next take</span><span class="script-outline-chip cf-neon-chip">A little inspiration</span></div><div class="script-paper" aria-hidden="true"><div class="script-paper-top"><span>Your next great video</span><svg><use href="#i-bolt"></use></svg></div><b>There's a better<br>way to do this.</b><div class="script-paper-line"></div><div class="script-paper-line short"></div><div class="script-paper-tags"><span>The hook</span><span>00:03</span></div><div class="script-paper-note"><svg><use href="#i-create"></use></svg><span>Your idea. Your voice.<br>Just a better starting point.</span></div></div><h2>Your idea.<br>Ready to record.</h2><p>Start with your brief. Leave with a recording plan.</p><div class="script-deliverables"><span>03 hooks</span><span>03 titles</span><span>A full script</span><span>Shot ideas</span></div><small>Example layout, not a generated result.</small></div><div id="scriptResult" hidden></div></section></div>
-        <footer class="script-bottom-note"><span>Built for your next great take</span><span>Ideas in. Original drafts out. <svg aria-hidden="true"><use href="#i-bolt"></use></svg></span></footer>
+          <button type="submit" class="btn btn-primary" id="scriptGenerate">Generate script ↗</button>
+          <details class="script-disclosure"><summary>Privacy & limits</summary><p>Your brief is sent to Groq. Don't include confidential information. Generates text, not video. No paid OpenAI API fallback. Review facts and rights before publishing. Drafts stay on this page; download to keep them.</p></details>
+        </form><section class="script-output" aria-label="Generated script" aria-busy="false"><div id="scriptLoading" class="script-loading glass" hidden role="status"><span class="script-loading-icon" aria-hidden="true">✦</span><h2>Generating script…</h2><div class="script-loading-line"></div></div><div id="scriptEmpty" class="script-empty glass"><svg class="script-empty-icon" aria-hidden="true"><use href="#i-edit"></use></svg><h2>Your script</h2><p>Generated scripts appear here.</p></div><div id="scriptResult" hidden></div></section></div>
+
       </div>
     </section>
 

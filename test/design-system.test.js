@@ -24,7 +24,17 @@ test('Neon Performance specification locks the exact supplied colors and type sc
 });
 test('AI writer uses marketing-scale type, sentence case and tonal cards rather than microtype and paper-stack decoration',()=>{
  const css=fs.readFileSync('assets/script-studio.css','utf8'),dom=new JSDOM(fs.readFileSync('app.html','utf8'));try{
- const d=dom.window.document;assert.equal(d.querySelector('.script-kicker').textContent,'The brief');assert.equal(d.querySelector('.script-hero .eyebrow').textContent,'Your next video starts here');assert(d.querySelector('.script-chip').classList.contains('cf-neon-chip'));
- assert(css.includes('font:600 78px/82.68px var(--display)'));assert(css.includes('letter-spacing:-2.73px'));assert(css.includes('padding:22px 24px'));assert(css.includes('font:500 17px/1.2 var(--font)'));assert(!/font-size:\s*(?:8|9|10|11)px/.test(css));assert(!css.includes('rotate('));assert(!css.includes('gradient('));
+ const d=dom.window.document;assert.equal(d.querySelector('[data-view=scripts]').getAttribute('aria-label'),'Script writer');assert.equal(d.querySelector('.script-hero'),null);assert.equal(d.querySelector('.script-empty h2').textContent,'Your script');assert.equal(d.querySelector('.script-bottom-note'),null);assert.equal(d.querySelector('.script-paper'),null);
+ assert(css.includes('font:600 26px/31px var(--font)'));assert(css.includes('padding:22px 24px'));assert(css.includes('font:500 17px/1.2 var(--font)'));assert(!/font-size:\s*(?:8|9|10|11)px/.test(css));assert(!css.includes('rotate('));assert(!css.includes('gradient('));
  }finally{dom.window.close();}
+});
+
+test('every page loads the refinement layer and clipping exposes real range/framing controls',()=>{
+ for(const name of fs.readdirSync('.').filter(n=>n.endsWith('.html'))){const dom=new JSDOM(fs.readFileSync(name,'utf8'));assert(dom.window.document.querySelector('link[href="/assets/refinement.css"]'),name);dom.window.close();}
+ const dom=new JSDOM(fs.readFileSync('app.html','utf8'));try{const d=dom.window.document;assert(d.querySelector('#sourceStart[type=number]'));assert(d.querySelector('#sourceEnd[type=number]'));assert.deepEqual([...d.querySelectorAll('#sourceFraming option')].map(o=>o.value),['center','left','right','fit']);}finally{dom.window.close();}
+});
+test('script reading pace recalculates duration and warns when edited narration exceeds target',async()=>{
+ const dom=new JSDOM(fs.readFileSync('app.html','utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g,''),{runScripts:'outside-only'}),w=dom.window;
+ w.eval('var state={user:{id:"creator"}};function toast(){}');w.api=async()=>({brief:{topic:'Test recording',language:'English',seconds:15,tone:'educational'},model:'test',draft:{hooks:['One'],titles:['Title'],script:'word '.repeat(60),shots:['Film'],description:'Description',hashtags:['#test']}});
+ try{w.eval(fs.readFileSync('assets/integration/script-studio.js','utf8'));await w.document.getElementById('scriptForm').onsubmit({preventDefault(){}});const d=w.document,pace=d.getElementById('scriptPace'),timing=d.getElementById('scriptReadTime');assert(timing.textContent.includes('Over target'));pace.value='110';pace.dispatchEvent(new w.Event('change'));assert(timing.textContent.includes('~33 seconds'));d.getElementById('generatedScript').value='Short draft';d.getElementById('generatedScript').dispatchEvent(new w.Event('input'));assert(!timing.textContent.includes('Over target'));assert(!timing.classList.contains('over-target'));}finally{w.close();}
 });

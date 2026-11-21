@@ -185,10 +185,14 @@ $("#createForm").onsubmit = async (e) => {
   if (state.billing?.active && state.billing.usage?.clipsLeft === 0) return showErr("Workspace clip quota reached. Delete old clips or ask the administrator for access.");
   if (window.capStep && capStep.step === 1) return srcErr ? showErr(srcErr) : capStep.go(2); // Enter on step 1 = Next
   if (srcErr) { if (window.capStep) capStep.go(1); return showErr(srcErr); }
+  const sourceStart = Number($("#sourceStart").value || 0), sourceEnd = $("#sourceEnd").value === "" ? null : Number($("#sourceEnd").value);
+  if (!Number.isFinite(sourceStart) || sourceStart < 0 || (sourceEnd !== null && (!Number.isFinite(sourceEnd) || sourceEnd - sourceStart < .5))) return showErr("Choose a valid source range, at least half a second long.");
   const cap = window.capStep ? capStep.payload() : { style: state.opts.style, captions: state.opts.captions, textCase: state.opts.textCase };
   const fd = new FormData();
   fd.append("style", cap.style);
-  fd.append("crop", state.opts.crop);
+  fd.append("crop", $("#sourceFraming").value);
+  fd.append("sourceStart", sourceStart);
+  if (sourceEnd !== null) fd.append("sourceEnd", sourceEnd);
   fd.append("clips", state.opts.clips);
   fd.append("maxLen", state.opts.maxLen);
   fd.append("captions", cap.captions ? "true" : "false");
@@ -735,7 +739,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ---------- router ----------
-const PAGE_TITLES = { scripts: "AI Script Studio", plans: "Choose a plan", home: "Home", create: "Create", projects: "Projects", library: "Clips", assets: "Assets", exports: "Exports", settings: "Settings", job: "Project" };
+const PAGE_TITLES = { scripts: "Script writer", plans: "Choose a plan", home: "Home", create: "Create", projects: "Projects", library: "Clips", assets: "Assets", exports: "Exports", settings: "Settings", job: "Project" };
 const tabs = { set: (v) => $$("#sbNav a").forEach((a) => a.classList.toggle("on", a.dataset.v === v)) };
 
 function route() {

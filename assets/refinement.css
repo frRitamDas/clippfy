@@ -1,0 +1,94 @@
+/* Clippfy refinement layer: original layouts and protected assets remain intact. */
+:root{--focus-ring:0 0 0 3px var(--lime-soft)}
+button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--lime);outline-offset:4px}
+button:disabled{cursor:not-allowed}
+input,textarea,select{accent-color:var(--lime)}
+/* Blur is limited to persistent chrome. Opaque fallback comes first. */
+body .topbar,.utility-top{background:var(--bg)}
+@supports(backdrop-filter:blur(12px)){
+ body:not(.locked) .topbar,.utility-top{background:rgba(12,12,13,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+ body.landing .topnav{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+}
+body .topbar h1{font-weight:700;font-size:22px;letter-spacing:-.025em}
+body .sb-nav a{transition:background 160ms ease,color 160ms ease}
+body .sb-nav a.on{font-weight:600}
+/* Public pages retain the signature headline, layout, artwork and CTA. */
+.landing .faq-box .qa button{line-height:1.45;min-height:64px}
+.landing .qa button:focus-visible,.lg-tabs a:focus-visible{outline-offset:-4px}
+.pc-desc,.pc-features{line-height:1.6}
+.lg-body{line-height:1.8;overflow-wrap:anywhere}
+.lg-body h2{font-weight:700}
+.lg-toc a{border-radius:6px;padding:7px 8px;margin-left:-8px}
+.lg-toc a:hover{background:var(--s1)}
+.lg-tabs{max-width:100%;flex-wrap:wrap}
+/* Create: advanced controls extend the existing form instead of replacing it. */
+.clip-advanced{border-top:1px solid var(--hairline);margin-top:22px;padding-top:18px}
+.clip-advanced summary{cursor:pointer;color:var(--ink);font-size:15px;font-weight:600;padding:6px 0}
+.clip-controls{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+.clip-controls label{display:flex;flex-direction:column;gap:8px;font-size:14px;font-weight:500;min-width:0}
+.clip-framing{grid-column:1/-1}
+.clip-controls input,.clip-controls select{width:100%;min-width:0;min-height:48px;padding:12px 14px;background:var(--s2);color:var(--ink);border:1px solid var(--hairline-2);border-radius:13px;font:400 15px/1.45 var(--font)}
+.clip-advanced p{font-size:13px;line-height:1.6;color:var(--muted);margin:14px 0 0}
+/* Script desk: decisive hierarchy, readable text, no marketing filler. */
+.script-panel{gap:20px}
+.script-panel label{font-weight:600}
+.script-panel textarea.cf-field{min-height:190px;background:var(--s2)}
+.script-panel .cf-field{background:var(--s2)}
+.script-panel .cf-field:focus{border-color:var(--lime);box-shadow:var(--focus-ring)}
+.script-empty{min-height:420px;background:var(--s1);box-shadow:none}
+.script-empty-icon{width:40px;height:40px;color:var(--lime);opacity:.7}
+.script-empty h2{font:700 32px/1.2 var(--display);letter-spacing:-.8px}
+.script-result-head h2{font:700 32px/1.2 var(--display);letter-spacing:-.8px}
+.script-result-card h3{font-weight:650}
+.script-examples button{min-height:40px;border-radius:10px;background:var(--s2);color:var(--ink-2)}
+.script-disclosure{font-size:13px;text-align:left;margin:0}
+.script-disclosure summary{color:var(--muted);text-decoration:none;min-height:28px}
+.script-disclosure summary:hover{color:var(--ink)}
+.script-result-head{gap:20px}
+.script-result-head>div:last-child{display:grid;grid-template-columns:1fr 1fr;width:100%}
+.script-studio .script-result-head .btn{padding-inline:16px}
+/* Admin: bigger working hierarchy without losing compact mode or table density. */
+.admin-studio .page-heading h1{font-size:clamp(36px,3.6vw,52px);font-weight:700;line-height:1.1;letter-spacing:-.04em;max-width:850px}
+.admin-studio .page-heading p{font-size:16px;line-height:1.6}
+.admin-studio .metric-value{font-size:44px;font-weight:700;letter-spacing:-.05em}
+.admin-studio .metric-top{font-size:15px;color:var(--ink-2)}
+.admin-studio .metric small{font-size:12px;line-height:1.5}
+.admin-studio .card-heading h2{font-size:24px;line-height:1.25;font-weight:700}
+.admin-studio .card-heading p{font-size:14px}
+.admin-studio .page-heading .eyebrow{font-size:12px;letter-spacing:.08em}
+.admin-studio .owner-card h2{font-size:28px;font-weight:700}
+.admin-studio .owner-card p{font-size:14px}
+.admin-studio .grant-card h2{font-size:28px}
+.admin-studio td{font-size:14px}
+.admin-studio td small{font-size:12px}
+.admin-studio .badge{font-size:12px;padding:5px 9px}
+.admin-studio .health-row{font-size:14px}
+.admin-studio .table-tools{gap:10px}
+html.admin-compact .admin-studio .page-heading h1{font-size:34px}
+html.admin-compact .admin-studio .metric-value{font-size:32px}
+html.admin-compact .admin-studio .card-heading h2{font-size:21px}
+/* Utility pages: consistent hierarchy and legible navigation/status. */
+.utility-heading h1{font-weight:700}
+.utility-top nav a{min-height:44px;display:inline-flex;align-items:center}
+.utility-page .panel h2{font-weight:650}
+.utility-page .utility-status{line-height:1.65}
+.utility-page th{font-size:13px}
+.utility-page td{font-size:14px}
+.utility-page .account-note{font-size:13px;line-height:1.6}
+@media(max-width:1100px){.admin-studio .page-heading{align-items:flex-start}.script-empty{min-height:260px}}
+@media(max-width:600px){
+ body .topbar h1{font-size:20px}
+ .admin-studio .page-heading h1{font-size:34px}
+ .admin-studio .metric-value{font-size:34px}
+ .admin-studio .metric-top{font-size:13px}
+ .admin-studio .card-heading h2{font-size:22px}
+ .admin-studio .owner-card h2{font-size:24px}
+ .script-empty h2,.script-result-head h2{font-size:28px}
+ .clip-controls{gap:12px}.clip-controls input,.clip-controls select{font-size:16px}
+ .script-studio .script-result-head .btn{font-size:15px;padding-inline:10px}
+ .utility-top-inner{flex-wrap:wrap}.utility-top nav{flex-wrap:wrap}
+}
+@media(prefers-reduced-transparency:reduce){body .topbar,.utility-top,body.landing .topnav{background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+.script-timing{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:16px}.script-timing label{font-size:13px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:10px}.script-timing select{background:var(--s2);color:var(--ink);border:1px solid var(--hairline-2);border-radius:10px;min-height:40px;padding:8px;font:inherit}.script-timing .script-muted{margin:0;font-size:13px}.script-timing .over-target{color:var(--tertiary)}
