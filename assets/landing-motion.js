@@ -1,7 +1,7 @@
 /* Finite, once-per-visit count-up to the supplied illustrative totals. */
 (() => {
   const dialog = document.getElementById('figuresDialog');
-  document.getElementById('aboutFigures')?.addEventListener('click', () => dialog.showModal());
+  document.getElementById('aboutFigures')?.addEventListener('click', () => dialog?.showModal());
   const group = document.querySelector('.stats-live');
   if (!group) return;
   const counters = ['statCreators', 'statClips'].map(id => document.getElementById(id)).filter(Boolean);

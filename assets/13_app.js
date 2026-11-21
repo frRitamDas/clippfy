@@ -10,7 +10,7 @@ const STYLES = [
   { id: "classic", name: "Classic", html: '<span class="cs cs-classic">No way bro he did that</span>' },
 ];
 const STEPS = [["download", "Download"], ["transcribe", "Transcribe"], ["analyze", "Find moments"], ["render", "Render"]];
-const DEFAULTS = { style: "lime", crop: "center", clips: 3, maxLen: 30, captions: false, textCase: "upper", reduceMotion: false };
+const DEFAULTS = { style: "lime", crop: "center", clips: 10, maxLen: 58, captions: true, textCase: "upper", reduceMotion: false };
 
 const state = {
   user: null,
@@ -127,13 +127,13 @@ $("#useUpload").addEventListener("click", () => { sourceSeg.set("file"); state.s
 // a YouTube-blocked project offers the upload instead: open Create on the file tab
 $("#jobUpload").addEventListener("click", () => $("#useUpload").click());
 // the full list of sites doesn't fit the link box on phones; the hint under it names them
-$("#url").placeholder = "Paste a YouTube video or Shorts link";
+if (matchMedia("(max-width: 600px)").matches) $("#url").placeholder = "Paste a video link";
 // range slider with a live value label; onChange fires once on release
 function slider(input, label, fmt, onInput, onChange) {
-  const show = () => { label.textContent = fmt(+input.value); input.style.setProperty("--p", ((input.value - input.min) / Math.max(1, input.max - input.min)) * 100 + "%"); };
+  const show = () => { label.textContent = fmt(+input.value); input.style.setProperty("--p", ((input.value - input.min) / (input.max - input.min)) * 100 + "%"); };
   input.addEventListener("input", () => { show(); onInput && onInput(+input.value); });
   if (onChange) input.addEventListener("change", () => onChange(+input.value));
-  return { set: (v) => { input.value = v; show(); onInput && onInput(+input.value); } };
+  return { set: (v) => { input.value = v; show(); } };
 }
 const secs = (v) => v + "s";
 const clipsSeg = slider($("#optClips"), $("#optClipsVal"), String, (v) => (state.opts.clips = v));
@@ -142,8 +142,8 @@ const caseView = (el, v) => el.classList.toggle("lower", v === "lower");
 
 // caption style, case and captions on/off live in step 2 (create-style.js → capStep)
 function applyOptsToCreate(o) {
-  state.opts = { ...state.opts, style: o.style, crop: o.crop, clips: Math.max(1, Math.min(10, Number(o.clips) || DEFAULTS.clips)), maxLen: o.maxLen, captions: o.captions, textCase: o.textCase || "upper" };
-  clipsSeg.set(state.opts.clips);
+  state.opts = { ...state.opts, style: o.style, crop: o.crop, clips: Math.min(10, o.clips), maxLen: o.maxLen, captions: o.captions, textCase: o.textCase || "upper" };
+  clipsSeg.set(Math.min(10, o.clips));
   lenSeg.set(o.maxLen);
   if (window.capStep) capStep.fromDefaults(state.opts);
 }
@@ -153,14 +153,8 @@ applyOptsToCreate(DEFAULTS);
 function sourceError() {
   if (state.source === "url") {
     const url = $("#url").value.trim();
-    if (!url) return "Paste a single YouTube video URL first.";
-    try {
-      const u = new URL(url);
-      const hosts = ["youtube.com","www.youtube.com","m.youtube.com","music.youtube.com","youtu.be"];
-      const p = u.pathname.split("/").filter(Boolean);
-      const id = u.hostname === "youtu.be" && p.length === 1 ? p[0] : u.pathname === "/watch" ? u.searchParams.get("v") : p.length === 2 && ["shorts","embed","live"].includes(p[0]) ? p[1] : "";
-      if (!hosts.includes(u.hostname) || !/^https?:$/.test(u.protocol) || u.username || u.password || u.port || !/^[A-Za-z0-9_-]{11}$/.test(id || "")) return "Use a single YouTube watch, Shorts or youtu.be link, or upload a video file.";
-    } catch { return "Paste a valid YouTube video URL."; }
+    if (!url) return "Paste a video link first: YouTube, Twitch, Kick, Google Drive or Dropbox.";
+    if (!/^https?:\/\/([\w-]+\.)*(youtube\.com|youtu\.be|twitch\.tv|kick\.com|drive\.google\.com|dropbox\.com)\//i.test(url)) return "We can't import from that site. Paste a YouTube, Twitch, Kick, Google Drive or Dropbox link, or upload the file.";
   } else if (!state.file) return "Choose a video file to upload first.";
   return "";
 }
@@ -182,7 +176,6 @@ $("#createForm").onsubmit = async (e) => {
   err.hidden = true;
   const showErr = (m) => { err.textContent = m; err.hidden = false; };
   const srcErr = sourceError();
-  if (state.billing?.active && state.billing.usage?.clipsLeft === 0) return showErr("Workspace clip quota reached. Delete old clips or ask the administrator for access.");
   if (window.capStep && capStep.step === 1) return srcErr ? showErr(srcErr) : capStep.go(2); // Enter on step 1 = Next
   if (srcErr) { if (window.capStep) capStep.go(1); return showErr(srcErr); }
   const cap = window.capStep ? capStep.payload() : { style: state.opts.style, captions: state.opts.captions, textCase: state.opts.textCase };
@@ -200,18 +193,7 @@ $("#createForm").onsubmit = async (e) => {
   btn.classList.add("loading");
   $("span", btn).textContent = state.source === "file" ? "Uploading…" : "Starting…";
   try {
-    const payload = Object.fromEntries(fd.entries()); delete payload.file;
-    let job;
-    if (state.source === "url") {
-      job = await api("/api/jobs", { json: payload });
-    } else {
-      if (state.file.size > 50 * 1024 * 1024) throw new Error("Choose a video up to 50 MB.");
-      // Upload directly to private storage, not through Vercel's request-body limit.
-      const ticket = await api("/api/uploads", { json: { name: state.file.name, size: state.file.size } });
-      const uploaded = await fetch(ticket.uploadUrl, { method: "PUT", headers: { "Content-Type": state.file.type || "application/octet-stream" }, body: state.file });
-      if (!uploaded.ok) throw new Error("Upload failed. Check your connection and try again.");
-      job = await api("/api/jobs", { json: { ...payload, id: ticket.id, name: ticket.name } });
-    }
+    const job = await api("/api/jobs", { method: "POST", body: fd });
     $("#url").value = "";
     state.file = null;
     $("#dropText").textContent = "Drop a video here or browse";
@@ -496,7 +478,7 @@ function renderJob(job, animate) {
   const errBox = $("#jobError");
   errBox.hidden = job.status !== "failed";
   if (job.status === "failed") errBox.textContent = job.error === "Cancelled" ? "You cancelled this project." : job.error || "The worker stopped without an error message. Check the server console.";
-  $("#jobUpload").hidden = !(job.status === "failed" && (job.sourceType === "youtube" || job.errorCode === "yt_blocked"));
+  $("#jobUpload").hidden = !(job.status === "failed" && job.errorCode === "yt_blocked");
   const note = $("#jobNote"), got = job.clips.length, asked = job.options.clips;
   note.hidden = !(job.status === "done" && got && got < asked);
   if (!note.hidden) note.textContent = `You asked for ${asked} clips. This video is ${fmtTime(job.duration)} long, so ${got} fit without repeating the same moment. Only ${got === 1 ? "this clip" : "these " + got} counted toward your plan. Longer videos give more clips.`;
@@ -829,7 +811,7 @@ const lockEl = $("#lock");
 let authMode = "login";
 const COPY = {
   login: { title: "Welcome back", sub: "Sign in to open your studio.", btn: "Sign in" },
-  signup: { title: "Create your account", sub: "Create your free workspace. The $1 trial is coming soon.", btn: "Create account" },
+  signup: { title: "Create your account", sub: "Takes ten seconds. Then start your full-access trial for just $1.", btn: "Create account" },
 };
 const authSeg = seg($("#authSeg"), "login", setAuthMode);
 
@@ -885,11 +867,6 @@ $("#authForm").onsubmit = async (e) => {
     if (authMode === "signup") body.name = $("#aName").value;
     const user = await api(`/api/auth/${authMode}`, { json: body });
     $("#aPass").value = "";
-    if (user.confirmationRequired) {
-      $("#authError").textContent = "Check your email to confirm your account, then sign in. Check spam too.";
-      $("#authError").hidden = false;
-      return;
-    }
     unlock(user, authMode === "signup");
   } catch (ex) {
     const map = { name: "#aName", email: "#aEmail", password: "#aPass" };
@@ -951,9 +928,6 @@ const AUTH_ERRORS = {
   google_off: "Google sign-in isn't available right now. Use your email.",
   busy: "Too many attempts. Wait a few minutes and try again.",
 };
-// Exchange Supabase email-confirmation tokens for secure same-origin cookies.
-const authTokens = new URLSearchParams(location.hash.slice(1));
-const tokenReady = authTokens.has("access_token") ? api("/api/auth/session", {json: {access_token:authTokens.get("access_token"),refresh_token:authTokens.get("refresh_token")}}).then(() => {history.replaceState(null,"","/app");}).catch(e=>toast(e.message,"error")) : Promise.resolve();
 api("/api/auth/providers").then((p) => { $("#googleWrap").hidden = !p.google; }).catch(() => {});
 $("#googleBtn").onclick = () => {
   const q = new URLSearchParams();
@@ -977,7 +951,6 @@ $("#googleBtn").onclick = () => {
   }
   if (params.toString()) history.replaceState(null, "", "/app" + location.hash);
   try {
-    await tokenReady;
     const user = await api("/api/auth/me");
     unlock(user, welcome);
   } catch {
@@ -1033,11 +1006,6 @@ function renderPlans() {
   const b = state.billing;
   const box = $("#plansBody");
   if (!b) { box.innerHTML = ""; return; }
-  if (b.free) {
-    $("#plansTitle").textContent = "Your workspace";
-    box.innerHTML = '<article class="pp pp-trial"><div><span class="pp-tag">$1 trial · coming soon</span><h3>Your $1 trial offer</h3><p>Paid checkout is not enabled yet. Use the free workspace below now; no payment is required.</p></div></article><article class="pp pp-current"><div><span class="pp-tag">Free access</span><h3>Upload, clip, edit & download</h3><p>'+(b.access?.admin?'Admin: uncapped workspace clips/projects · provider storage limits apply':(b.usage.clipsLimit+' stored clips · '+b.usage.storageLimit+' GB workspace'))+' · sources up to 50 MB (no fixed source-duration cap). Export: 720 × 1280 MP4. Clips are evenly spaced excerpts, not AI-ranked highlights. YouTube imports support public recorded videos up to 50 MB (downloaded up to 480p); YouTube may block the server. Other sites and paid plans are not configured. Automatic captions support a Groq free-tier key; OpenAI is optional and never selected automatically.</p></div><a class="btn btn-primary" href="#create">Create clips</a></article>';
-    return;
-  }
   const P = b.plans;
   const feat = (p) => [
     `${p.clips} clips / month`, `${gb(p.storage)} storage`, "All caption styles + editor",
@@ -1100,8 +1068,8 @@ function renderPlanChip() {
   const b = state.billing, chip = $("#planChip");
   if (!b || !b.active) { chip.hidden = true; return; }
   chip.hidden = false;
-  const name = b.access?.admin ? "Admin workspace" : b.access?.plan && b.access.plan!=="free" ? b.access.plan+" (granted)" : b.free ? "Free workspace" : b.tier === "trial" ? "Trial" : b.plans[b.tier].name;
-  const sub = b.tier === "trial" ? `ends in ${timeLeft(b.trialEnd)}` : b.usage.clipsLimit===null ? "Uncapped workspace clips" : `${b.usage.clipsLeft} of ${b.usage.clipsLimit} clips left`;
+  const name = b.tier === "trial" ? "Trial" : b.plans[b.tier].name;
+  const sub = b.tier === "trial" ? `ends in ${timeLeft(b.trialEnd)}` : `${b.usage.clipsLeft} of ${b.usage.clipsLimit} clips left`;
   chip.innerHTML = `<b>${name}</b><span>${sub}</span>`;
   chip.classList.toggle("trial", b.tier === "trial");
 }
@@ -1113,7 +1081,6 @@ async function openPortal() {
 
 // one line about the current plan: what it costs and when it renews or ends
 function planLine(b) {
-  if (b.free) return "Free workspace · no subscription or automatic charges.";
   const P = b.plans, T = P[b.trial.then];
   if (b.tier === "trial") {
     const then = b.trial.thenInterval === "year" ? `${T.name} at ${money(T.yearPrice)}/year` : `${T.name} at ${money(T.price)}/month`;
@@ -1128,10 +1095,6 @@ function fillBilling() {
   if (!b) { body.innerHTML = ""; return; }
   if (!b.active) {
     body.innerHTML = `<div class="bill-row"><div><b>No active plan</b><small>Pick a plan to create, edit and download clips.</small></div><a class="btn btn-primary btn-sm" href="#plans">See plans</a></div>`;
-    return;
-  }
-  if (b.free) {
-    body.innerHTML = `<div class="bill-row"><div><b>${b.access?.admin ? "Admin workspace" : b.access?.plan || "Free workspace"}</b><small>No charges. ${b.usage.clipsUsed} / ${b.usage.clipsLimit===null ? "uncapped" : b.usage.clipsLimit} stored clips · ${bytes(b.usage.storageBytes)} used. Delete old projects to free space.</small></div></div>`;
     return;
   }
   const u = b.usage, P = b.plans;
@@ -1168,12 +1131,8 @@ function fillBilling() {
 function applyBillingToCreate() {
   const b = state.billing;
   const input = $("#optClips");
-  // null means uncapped (admin), not zero. Never coerce it into a one-clip slider.
-  const remaining = b?.active ? b.usage?.clipsLeft : null;
-  const left = typeof remaining === "number" && Number.isFinite(remaining) ? Math.max(0, Math.floor(remaining)) : 10;
+  const left = b && b.active ? b.usage.clipsLeft : 10;
   input.max = String(Math.max(1, Math.min(10, left)));
-  input.disabled = left === 0;
-  input.title = left === 0 ? "Workspace clip quota reached. Delete old clips or ask the administrator for access." : "Choose up to " + input.max + " clips per project";
   if (+input.value > +input.max) { clipsSeg.set(+input.max); state.opts.clips = +input.max; } else clipsSeg.set(+input.value);
   const fileBtn = $('#sourceSeg [data-v="file"]');
   const noUploads = !!(b && b.active && !b.limits.uploads);
@@ -1198,13 +1157,3 @@ addEventListener("focus", async () => {
   await loadBilling();
   if (state.billing && state.billing.active !== was) route();
 });
-
-// Prefer the working upload flow; no changes to the existing layout.
-// Start on the YouTube link tab; the upload fallback remains one click away.
-sourceSeg.set("url"); state.source = "url";
-$$(".pane").forEach(p => p.hidden = p.dataset.pane !== "url");
-const sourceHint = document.createElement("p");
-sourceHint.className = "hint";
-sourceHint.textContent = "YouTube links and uploads: up to 50 MB; no fixed source-duration cap. Public recorded videos only; YouTube may block cloud downloads. Use only videos you own or have permission to use. 720p vertical MP4 exports. Source length has no default application cap, but Vercel execution time and storage limits still apply. Clips use evenly spaced excerpts. Keep this page open to follow progress. Captions support a Groq key; turn them off if unavailable. Caption exports currently use static Anton text; advanced animation previews are not exported.";
-$("#createForm").prepend(sourceHint);
-const recovery = document.createElement("a"); recovery.href="/reset"; recovery.textContent="Forgot password?"; recovery.className="btn btn-quiet btn-sm"; $("#authForm").append(recovery);
