@@ -1,0 +1,6 @@
+/* Original fonts, hosted locally so the original layout does not fall back to a wider system font. */
+@font-face{font-family:Geist;font-style:normal;font-weight:100 900;font-display:swap;src:url('/assets/fonts/geist-latin-wght-normal.woff2') format('woff2')}
+@font-face{font-family:Montserrat;font-style:normal;font-weight:100 900;font-display:swap;src:url('/assets/fonts/montserrat-latin-wght-normal.woff2') format('woff2')}
+/* Reference desktop composition: keep both headline rows intact. */
+@media(min-width:1100px){.hero h1{font-size:70px}.hero h1 .h1-sub{white-space:nowrap}.hero .btn-xl{--h:62px;padding-inline:28px;font-size:20px}}
+.hero .trusted .label{font-family:var(--font);font-style:normal;color:var(--ink);transform:none}.hero .trusted .arrow{stroke:var(--ink)}.hero .trusted .pfp.ring::before,.hero .trusted .pfp.ring::after{display:none}

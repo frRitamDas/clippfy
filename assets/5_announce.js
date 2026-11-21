@@ -1,6 +1,6 @@
 /* Preserve the original $1 trial marquee without a fake countdown or active checkout. */
 (() => {
-  const set = '<span class="mq-i">Clippfy $1 trial</span><span class="mq-pill">Coming soon</span><span class="mq-i">Free workspace available now · no payment required</span>';
+  const set = '<span class="mq-i">Get full-access Clippfy for $1!</span><span class="mq-pill">$1 only</span><span class="mq-i">Offer preview · Coming soon</span><span class="mq-pill">-97% off</span>';
   const half = '<div class="mq-half">' + set.repeat(8) + '</div>';
   const track = '<div class="mq-track">' + half + half.replace('class="mq-half"', 'class="mq-half" aria-hidden="true"') + '</div>';
   document.documentElement.classList.add('has-ann');

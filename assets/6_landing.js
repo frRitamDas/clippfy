@@ -23,9 +23,7 @@ document.addEventListener("contextmenu", (e) => { if (e.target.closest("img, .pf
 document.addEventListener("dragstart", (e) => { if (e.target.tagName === "IMG") e.preventDefault(); });
 $$("img").forEach((i) => i.setAttribute("draggable", "false"));
 
-// Review marquee is initialized once by reviews.js.
-
-// Community totals are static illustrative design values, never simulated activity.
+// Review looping is handled by reviews.js; community totals are fixed design placeholders.
 
 // ---- FAQ ----
 $$("#faqList .qa").forEach((qa) => {
