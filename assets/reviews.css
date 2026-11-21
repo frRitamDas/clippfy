@@ -1,17 +1,17 @@
 /* Uploaded reviews design, isolated from the Studio and landing page theme. */
 #reviews {
-  color-scheme: light;
+  color-scheme: dark;
 
-  --bg: #ffffff;
-  --s1: #ffffff;
+  --bg: #000000;
+  --s1: #111113;
 
-  --ink: #18181b;
-  --ink-2: #41434a;
-  --muted: #7b7f87;
+  --ink: #f1f2ec;
+  --ink-2: #d1d2cc;
+  --muted: #969890;
 
   --on-lime: #0c0c0d;
   --lime: #d1fe17;
-  --hairline: rgba(15, 23, 42, .08);
+  --hairline: rgba(255, 255, 255, .10);
 
   --font: "Geist", "Segoe UI", system-ui, sans-serif;
   --display: "Montserrat", "Geist", system-ui, sans-serif;
@@ -75,7 +75,7 @@
 
 #reviews .ystars{ color: #f5b400; font-size: 24px; letter-spacing: 2px; }
 
-#reviews .qmark{ width: 30px; height: 30px; color: rgba(15, 23, 42, .1); flex: none; }
+#reviews .qmark{ width: 30px; height: 30px; color: rgba(255, 255, 255, .18); flex: none; }
 
 #reviews .tcard blockquote{
   margin: 0;
@@ -144,3 +144,5 @@
 @media (prefers-reduced-motion: reduce) {
 #reviews .marquee .track{ animation: none; }
 }
+
+#reviews .community-counts{display:flex;justify-content:center;gap:clamp(32px,8vw,120px);text-align:center;padding:44px 20px 0}#reviews .community-counts strong{display:block;font-family:var(--display);font-size:clamp(28px,4vw,44px);letter-spacing:-.04em;color:var(--ink)}#reviews .community-counts span{display:block;font-size:13px;color:var(--muted);margin-top:6px}#reviews .counts-note{text-align:center;color:var(--muted);font-size:11px;margin:18px 20px 0}@media(max-width:480px){#reviews .community-counts{gap:24px}#reviews .community-counts strong{font-size:28px}#reviews .community-counts span{font-size:11px}}

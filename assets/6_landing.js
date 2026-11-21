@@ -25,24 +25,7 @@ $$("img").forEach((i) => i.setAttribute("draggable", "false"));
 
 // Review marquee is initialized once by reviews.js.
 
-// ---- live counters: grow from a fixed start so they keep climbing across reloads ----
-(() => {
-  const start = Date.UTC(2026, 9, 28) / 1000;
-  const fmt = (n) => Math.floor(n).toLocaleString("en-US");
-  const el1 = $("#statCreators"), el2 = $("#statClips");
-  if (!el1) return;
-  const elapsed = Date.now() / 1000 - start;
-  let creators = 148312 + elapsed * 0.05;
-  let clips = 2847519 + elapsed * 1.5;
-  const tick = () => {
-    creators += Math.random() < 0.6 ? 1 + Math.floor(Math.random() * 2) : 0;
-    clips += 3 + Math.floor(Math.random() * 9);
-    el1.textContent = fmt(creators);
-    el2.textContent = fmt(clips);
-  };
-  tick();
-  setInterval(tick, 1000);
-})();
+// Community totals are static illustrative design values, never simulated activity.
 
 // ---- FAQ ----
 $$("#faqList .qa").forEach((qa) => {
