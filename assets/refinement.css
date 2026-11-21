@@ -4,12 +4,9 @@ button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
 :focus-visible{outline:2px solid var(--lime);outline-offset:4px}
 button:disabled{cursor:not-allowed}
 input,textarea,select{accent-color:var(--lime)}
-/* Blur is limited to persistent chrome. Opaque fallback comes first. */
-body .topbar,.utility-top{background:var(--bg)}
-@supports(backdrop-filter:blur(12px)){
- body:not(.locked) .topbar,.utility-top{background:rgba(12,12,13,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
- body.landing .topnav{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-}
+/* Navigation stays crisp and opaque; no blurred backdrop. */
+body .topbar,.utility-top{background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none}
+body.landing .topnav{backdrop-filter:none;-webkit-backdrop-filter:none}
 body .topbar h1{font-weight:700;font-size:22px;letter-spacing:-.025em}
 body .sb-nav a{transition:background 160ms ease,color 160ms ease}
 body .sb-nav a.on{font-weight:600}
