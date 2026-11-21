@@ -2,7 +2,7 @@
    Keep the restored source assets byte-identical; extend them here. */
 @font-face{font-family:Geist;src:url('/assets/fonts/geist-latin-wght-normal.woff2') format('woff2');font-style:normal;font-weight:100 900;font-display:swap}
 @font-face{font-family:Montserrat;src:url('/assets/fonts/montserrat-latin-wght-normal.woff2') format('woff2');font-style:normal;font-weight:100 900;font-display:swap}
-:root{color-scheme:dark;--bg:#0c0c0d;--s1:#141416;--s2:#1a1a1d;--s3:#222226;--s4:#2b2b30;--ink:#f1f2ec;--ink-2:#d5d7cf;--muted:#9c9e97;--muted-2:#70726c;--on-lime:#0c0c0d;--lime:#d1fe17;--lime-hi:#dcff52;--lime-deep:#d1fe17;--lime-soft:rgba(209,254,23,.12);--hairline:rgba(255,255,255,.07);--hairline-2:rgba(255,255,255,.12);--danger:#ff6b55;--glass:var(--s1);--glass-strong:var(--s2);--glass-soft:#111113;--glass-edge:rgba(255,255,255,.07);--blur:none;--shadow-1:0 10px 28px -18px rgba(0,0,0,.8);--shadow-2:0 28px 60px -28px rgba(0,0,0,.9);--shadow-lime:none;--hard-lime:#7d9c08;--hard-dark:#050506;--font:Geist,'Segoe UI',system-ui,sans-serif;--display:Montserrat,Geist,system-ui,sans-serif;--r:20px;--r-lg:28px;--ease:cubic-bezier(.22,1,.36,1);--t-fast:160ms;--t:280ms}
+:root{color-scheme:dark;--bg:#0c0c0d;--s1:#141416;--s2:#1a1a1d;--s3:#222226;--s4:#2b2b30;--ink:#f1f2ec;--ink-2:#d5d7cf;--muted:#8d8f87;--muted-2:#8d8f87;--on-lime:#0c0c0d;--lime:#d1fe17;--lime-hi:#b7e600;--lime-deep:#d1fe17;--lime-soft:rgba(209,254,23,.12);--hairline:#ffffff12;--hairline-2:rgba(255,255,255,.12);--danger:#ff6b55;--glass:var(--s1);--glass-strong:var(--s2);--glass-soft:#111113;--glass-edge:rgba(255,255,255,.07);--blur:none;--shadow-1:0 10px 28px -18px rgba(0,0,0,.8);--shadow-2:0 28px 60px -28px rgba(0,0,0,.9);--shadow-lime:none;--hard-lime:#7d9c08;--hard-dark:#050506;--font:Geist,'Segoe UI',system-ui,sans-serif;--display:Montserrat,Geist,system-ui,sans-serif;--r:22px;--r-lg:22px;--tertiary:#f5b400;--success:#31e07a;--info:#6ea8ff;--accent-strong:#b7e600;--space-xs:2px;--space-sm:10px;--space-md:18px;--space-lg:22px;--space-xl:34px;--radius-sm:4px;--radius-md:8px;--radius-lg:16px;--radius-xl:22px;--radius-full:9999px;--ease:cubic-bezier(.22,1,.36,1);--t-fast:160ms;--t:280ms}
 html,body{background:var(--bg);color:var(--ink)}body{font-family:var(--font)}body::before,body::after{display:none}button,input,textarea,select{font-family:inherit}::selection{background:var(--lime);color:var(--on-lime)}:focus-visible{outline:2px solid var(--lime);outline-offset:4px}input::placeholder,textarea::placeholder{color:var(--muted-2)}
 .glass{background:var(--s1);border-color:var(--hairline);backdrop-filter:none;box-shadow:var(--shadow-1)}.glass-strong,.glass-lift:hover{background:var(--s2)}
 .logo,.logo-mark svg{color:var(--ink);fill:var(--ink)}
@@ -10,3 +10,16 @@ body .btn-primary{background:var(--lime);color:var(--on-lime);box-shadow:0 3px 0
 /* Shared field surface for standalone pages and new Studio tools. */
 .cf-field{width:100%;box-sizing:border-box;min-width:0;border:1px solid var(--hairline-2);border-radius:12px;background:var(--bg);color:var(--ink);font:inherit;padding:12px 14px;transition:border-color var(--t-fast),box-shadow var(--t-fast)}.cf-field:hover{border-color:rgba(255,255,255,.24)}.cf-field:focus{outline:0;border-color:var(--lime);box-shadow:0 0 0 3px var(--lime-soft)}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.cf-field{transition:none}}
+
+/* Clippfy Neon Performance — user-supplied alpha type and component scale. */
+.cf-headline-display{font:600 78px/82.68px var(--display);letter-spacing:-2.73px}
+.cf-headline-lg{font:600 54px/65px var(--display);letter-spacing:-1.32px}
+.cf-headline-md{font:600 37px/44px var(--display);letter-spacing:-.36px}
+.cf-headline-sm{font:600 26px/31px var(--font);letter-spacing:0}
+.cf-body-lg{font:400 18px/27.9px var(--font)}.cf-body-md{font:500 17px/1.45 var(--font)}.cf-body-sm{font:400 15px/1.45 var(--font)}
+.cf-label-lg{font:500 17px/1.2 var(--font)}.cf-label-md{font:400 15px/1.2 var(--font)}.cf-label-sm{font:500 12px/1.1 var(--font)}
+:is(.script-studio,.utility-page) .btn{--h:54px;height:54px;min-height:54px;padding:19px 28px;border-radius:16px;font:500 17px/1.2 var(--font);letter-spacing:0}
+:is(.script-studio,.utility-page) .btn-glass{background:var(--bg);color:var(--ink)}
+:is(.script-studio,.utility-page) .btn-primary:hover{background:var(--accent-strong)}
+:is(.script-studio,.utility-page) .cf-field{border-radius:16px;background:var(--s1);padding:16px 18px;font:400 15px/1.45 var(--font)}
+:is(.script-studio,.utility-page) .cf-neon-chip{display:inline-flex;align-items:center;gap:8px;background:var(--lime);color:var(--on-lime);font:500 12px/1.1 var(--font);border-radius:9999px;padding:6px 10px}
