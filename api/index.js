@@ -36,6 +36,13 @@ app.patch('/api/account',wrap(async(req,res)=>{
 }));
 const plans=require('../assets/plans.json');
 async function rows(req){const out=[];for(let offset=0;;offset+=1000){const batch=B.checked(await req.sb.from('jobs').select('*').eq('user_id',req.user.id).order('created_at',{ascending:false}).order('id').range(offset,offset+999));out.push(...batch);if(batch.length<1000)return out;}}
+const scriptGenerator=require('../lib/script-generator');
+app.get('/api/scripts/config',wrap(async(req,res)=>res.json({configured:scriptGenerator.configured(),provider:'groq',model:scriptGenerator.MODEL})));
+app.post('/api/scripts/generate',wrap(async(req,res)=>{
+ scriptGenerator.input(req.body);
+ const release=scriptGenerator.acquire(req.user.id);
+ try{res.json(await scriptGenerator.generate(req.body));}finally{release();}
+}));
 app.get('/api/billing',wrap(async(req,res)=>{
  const data=await rows(req),a=await access(req.sb,req.user);const used=data.reduce((s,r)=>s+(r.payload.clips||[]).length,0);
  res.json({active:true,free:true,tier:a.plan,plan:a.plan,access:a,interval:'month',configured:false,canManage:false,dev:false,offerOpen:false,trialUsed:false,trial:{then:'starter',thenInterval:'month',days:3},plans,usage:{clipsUsed:used,clipsLeft:a.clipLimit===null?null:Math.max(0,a.clipLimit-used),clipsLimit:a.clipLimit,storageBytes:B.storageUsage(data),storageLimit:a.storageLimit===null?null:a.storageLimit/1024**3},limits:{uploads:true,uploadMaxBytes:Number.isFinite(B.MAX_UPLOAD_BYTES)?B.MAX_UPLOAD_BYTES:null},status:a.admin?'admin':a.plan});

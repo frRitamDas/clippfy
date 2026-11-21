@@ -735,14 +735,14 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ---------- router ----------
-const PAGE_TITLES = { plans: "Choose a plan", home: "Home", create: "Create", projects: "Projects", library: "Clips", assets: "Assets", exports: "Exports", settings: "Settings", job: "Project" };
+const PAGE_TITLES = { scripts: "AI Script Studio", plans: "Choose a plan", home: "Home", create: "Create", projects: "Projects", library: "Clips", assets: "Assets", exports: "Exports", settings: "Settings", job: "Project" };
 const tabs = { set: (v) => $$("#sbNav a").forEach((a) => a.classList.toggle("on", a.dataset.v === v)) };
 
 function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   let view = "home", jobId = null;
   if (h.startsWith("job=")) { view = "job"; jobId = h.slice(4); }
-  else if (["home", "create", "projects", "library", "settings", "plans"].includes(h)) view = h;
+  else if (["home", "create", "projects", "library", "settings", "plans", "scripts"].includes(h)) view = h;
   if (!state.user && view !== "create") view = "create";
   const paid = !!(state.billing && state.billing.active);
   // no active plan: onboarding only (plans + account), the studio navigation stays hidden

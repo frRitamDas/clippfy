@@ -2399,7 +2399,7 @@ body.unpaid .sb-new, body.unpaid .sb-nav, body.unpaid .sb-search, body.unpaid .q
 .pp-toggle button { padding: 8px 18px; border-radius: 10px; border: 0; background: none; color: var(--ink-2); font: inherit; font-weight: 600; cursor: pointer; }
 .pp-toggle button.on { background: var(--lime); color: #141a0b; }
 .pp-bill { margin: -10px 0 12px; color: var(--muted); font-size: 12.5px; }
-</style><link rel="stylesheet" href="/assets/storage.css"></head>
+</style><link rel="stylesheet" href="/assets/storage.css"><link rel="stylesheet" href="/assets/script-studio.css"></head>
 <body class="studio locked">
 <script src="/assets/integration/offer-preview.js"></script>
 
@@ -2442,6 +2442,7 @@ body.unpaid .sb-new, body.unpaid .sb-nav, body.unpaid .sb-search, body.unpaid .q
     <a href="#create" class="sb-new btn btn-primary"><svg><use href="#i-plus"></use></svg><span>New project</span></a>
     <nav class="sb-nav" id="sbNav" aria-label="Sections">
       <a href="#home" data-v="home" title="Home"><svg><use href="#i-home"></use></svg><span>Home</span></a>
+      <a href="#scripts" data-v="scripts" title="AI Script Studio"><svg><use href="#i-bolt"></use></svg><span>AI Scripts</span></a>
       <a href="#create" data-v="create" title="Create"><svg><use href="#i-create"></use></svg><span>Create</span></a>
       <a href="#projects" data-v="projects" title="Projects"><svg><use href="#i-folder"></use></svg><span>Projects</span></a>
       <a href="#plans" data-v="plans" title="Plans &amp; billing"><svg><use href="#i-plan"></use></svg><span>Plans &amp; billing</span></a>
@@ -2584,6 +2585,23 @@ body.unpaid .sb-new, body.unpaid .sb-nav, body.unpaid .sb-search, body.unpaid .q
       <div class="clip-grid" id="libGrid"></div>
     </section>
 
+    <section class="view" data-view="scripts" hidden>
+      <div class="script-studio">
+        <header class="script-hero"><span class="script-eyebrow">CREATE BEFORE THE CAMERA ROLLS</span><h1>An idea in.<br><em>A script out.</em></h1><p>Turn your topic into hooks, a ready-to-record script and a shot list. No video upload needed.</p><span class="script-chip">Open-weight GPT-OSS · Groq</span></header>
+        <div class="script-layout"><form id="scriptForm" class="script-panel">
+          <h2>What are we making?</h2><p class="script-muted">Be specific. Your angle makes the difference.</p>
+          <label>Video idea or source notes<textarea name="topic" required minlength="10" maxlength="2500" rows="5" placeholder="e.g. Explain three ways beginner creators can improve phone audio using things they already own."></textarea></label>
+          <div class="script-examples"><button type="button" data-idea="Teach beginner creators three ways to improve phone audio without buying new equipment.">Teach a skill</button><button type="button" data-idea="Tell a relatable story about a creator overcoming the fear of publishing their first video. Make clear it is a fictional example.">Tell a story</button><button type="button" data-idea="Explain how a reusable water bottle with a removable infuser works. Avoid unsupported environmental or health claims.">Explain a product</button></div>
+          <label>Who is it for?<input name="audience" required maxlength="160" value="Beginner creators" placeholder="Your audience"></label>
+          <div class="script-options"><label>Tone<select name="tone"><option value="educational">Educational</option><option value="storytelling">Storytelling</option><option value="energetic">Energetic</option><option value="professional">Professional</option></select></label><label>Target length<select name="seconds"><option value="15">15 seconds</option><option value="30" selected>30 seconds</option><option value="60">60 seconds</option></select></label></div>
+          <label>Output language<input name="language" required maxlength="60" value="English" placeholder="English, Hindi, Bengali…"></label>
+          <p class="script-muted">Your brief is sent to Groq. Do not enter confidential information. Free-tier quotas apply; no OpenAI fallback. This generates text, not a rendered video.</p>
+          <p id="scriptError" class="script-error" role="status" aria-live="polite"></p>
+          <button type="submit" class="btn btn-primary" id="scriptGenerate">Generate my script ↗</button>
+        </form><section class="script-output" aria-label="Generated script" aria-busy="false"><div id="scriptEmpty" class="script-empty"><div class="script-orbit">✦</div><h2>Your next video starts here.</h2><p>One brief. Three hooks. Three titles.<br>A script, shot ideas and a description.</p><small>Generated drafts need fact-checking.<br>Results stay on this page until you leave or refresh. Download to keep them.</small></div><div id="scriptResult" hidden></div></section></div>
+      </div>
+    </section>
+
     <!-- ASSETS -->
 
     <!-- EXPORTS -->
@@ -2671,6 +2689,7 @@ body.unpaid .sb-new, body.unpaid .sb-nav, body.unpaid .sb-search, body.unpaid .q
 <div class="toast glass" id="toast" role="status" aria-live="polite"></div>
 <script src="./assets/12_fx.js"></script>
 <script src="/assets/integration/studio.js"></script>
+<script src="/assets/integration/script-studio.js"></script>
 <script src="./assets/14_engine.js"></script>
 <script src="./assets/15_czselect.js"></script>
 <script src="./assets/16_create-style.js"></script>
