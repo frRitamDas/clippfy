@@ -7,7 +7,7 @@ const P=require('../lib/processor');
 const D=require('../lib/downloader');
 function memoryDB(payload){
  let row={payload:structuredClone(payload)};const files=new Map();
- const sb={from(){
+ const sb={rpc:async()=>({data:true}),from(){
   let patch,filters=[];const query={select(){return query;},update(p){patch=p;return query;},eq(k,v){filters.push([k,v]);return query;},
    async maybeSingle(){if(filters.some(([k,v])=>k==='payload->>status'&&row.payload.status!==v))return {data:null};if(patch)row={...row,...structuredClone(patch)};return {data:structuredClone(row)};},
    async single(){return query.maybeSingle();},then(resolve,reject){return query.maybeSingle().then(resolve,reject);}

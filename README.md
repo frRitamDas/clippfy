@@ -67,7 +67,7 @@ For local use, install a compatible yt-dlp executable and set `YTDLP_PATH` to it
 
 ## Optional separate container worker
 
-`worker/Dockerfile` and `worker/server.js` provide a portable worker for a container/VPS host **you provision**. This repository does not create a new hosting account or spend money on a server. The container adapter changes where the job executes; it does not raise the 50-MB source-size or 265-second processing limits, add a durable retry queue, or guarantee YouTube will accept that host's network.
+`worker/Dockerfile` and `worker/server.js` provide a portable worker for a container/VPS host **you provision**. This repository does not create a new hosting account or spend money on a server. The container adapter changes where the job executes; it does not raise the 50-MB YouTube download or 265-second processing limits, add a durable retry queue, or guarantee YouTube will accept that host's network.
 
 ```sh
 docker build -f worker/Dockerfile -t clippfy-worker .
@@ -87,7 +87,7 @@ docker run --rm -p 8080:8080 \
 
 ## Admin access and source-duration update
 
-The default application source-duration ceiling is now removed (upload and YouTube metadata paths). Set `MAX_SOURCE_SECONDS` to a positive number on API/worker hosts if you want a specific ceiling. This **does not** remove Vercel's 300-second execution ceiling, the current 265-second processing budget, per-download timeout, 50-MB Supabase/upload cap, captions provider quotas, or cloud YouTube blocks. Large videos can still fail for those reasons. This is not an unlimited-processing promise.
+The default application source-duration ceiling is now removed (upload and YouTube metadata paths). Set `MAX_SOURCE_SECONDS` to a positive number on API/worker hosts if you want a specific ceiling. This **does not** remove Vercel's 300-second execution ceiling, the current 265-second processing budget, per-download timeout, storage-provider per-file limits, captions provider quotas, or cloud YouTube blocks. Large videos can still fail for those reasons. This is not an unlimited-processing promise.
 
 Apply `supabase/migrations/202611200002_entitlements.sql` for manual access management. The verified database account `ritam73592@gmail.com` has uncapped *workspace* project/clip/storage quotas in the application; batch work stays at 1–10 clips, and provider/storage/processing limits still apply. Sign in and open `/admin` to grant Starter/Clipper/Pro access by verified registered email, optionally with an expiry. Select Free to revoke. These are complimentary manual entitlements, not paid or auto-renewing subscriptions. Grants do not create administrators. Each change is audited. Members cannot directly write access/audit tables or bypass the admin-checked RPC. Expired grants revert to free quotas on the next request without deleting existing files.
 
@@ -95,3 +95,8 @@ Current plans count stored clips rather than monthly generation credits: Free 30
 
 ### Storage display
 The dashboard and Settings show tracked project storage (source videos plus generated clip bytes), capacity and remaining space. Admins have no application quota, not unlimited provider storage. Usage refreshes when returning home, on project changes and periodically. Unattached/orphaned uploads are not included in project totals. Deleting stored projects frees tracked space.
+
+### Plan-based storage
+Storage allowances are derived from `assets/plans.json` for Starter, Creator (`clipper`) and Pro; Free retains 500 MiB. The billing API reports the actual assigned plan rather than a hardcoded Starter label. Upload admission and generated/edited clip growth use the combined stored source + clip total. The dashboard labels the assigned plan. There is no default 50-MiB uploaded-file application cap; a file must fit in the remaining plan space. The separate YouTube download bound is unchanged.
+
+The production `videos` bucket's explicit 52,428,800-byte file limit was removed on 2026-11-20 (`file_size_limit = null`). This inherits the Supabase project's global file-size ceiling, not unlimited provider capacity. That global ceiling has not been changed or verified by this connector; uploads over 50 MiB still require end-to-end verification and may require a provider-plan/configuration change. Quota checks are not transactional reservations and tracked totals exclude orphan uploads and thumbnails.
