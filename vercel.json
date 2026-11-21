@@ -43,6 +43,14 @@
     {
       "source": "/reset",
       "destination": "/reset.html"
+    },
+    {
+      "source": "/status",
+      "destination": "/status.html"
+    },
+    {
+      "source": "/preview-info",
+      "destination": "/preview-info.html"
     }
   ],
   "headers": [
@@ -60,6 +68,15 @@
         {
           "key": "X-Frame-Options",
           "value": "SAMEORIGIN"
+        }
+      ]
+    },
+    {
+      "source": "/assets/0_css2",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/css; charset=utf-8"
         }
       ]
     }

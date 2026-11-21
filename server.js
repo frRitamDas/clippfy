@@ -1,6 +1,7 @@
 const express=require('express');const app=require('./api');
 const path=require('node:path');
 for(const p of ['app','pricing','privacy','terms','refund','admin','editor','reset','status','preview-info'])app.get('/'+p,(req,res)=>res.sendFile(path.join(__dirname,p+'.html')));
+app.get('/assets/0_css2',(req,res)=>res.type('text/css').sendFile(path.join(__dirname,'assets/0_css2')));
 app.use('/assets',express.static(path.join(__dirname,'assets')));
 app.use('/fonts',express.static(path.join(__dirname,'fonts')));
 app.get('/',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));

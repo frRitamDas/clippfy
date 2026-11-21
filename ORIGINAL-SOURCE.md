@@ -24,3 +24,5 @@ but production download success is NOT established: the latest Vercel live smoke
 test encountered YouTube's bot challenge. Upload is the fallback. A reachable,
 authorized processing worker/network that YouTube accepts is still needed for
 reliable direct imports; source restoration alone does not resolve that block.
+
+The approved cross-page UI consistency update adds `assets/clippfy-ui.css` to every page without changing any protected original asset. It supplies the original dark tokens and bundled Geist/Montserrat fonts. New Script Studio and standalone utility-page layouts now extend that shared foundation; the restored landing/pricing structures, wording and original asset hashes remain protected by tests.
