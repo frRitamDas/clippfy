@@ -4,3 +4,9 @@
 /* Reference desktop composition: keep both headline rows intact. */
 @media(min-width:1100px){.hero h1{font-size:70px}.hero h1 .h1-sub{white-space:nowrap}.hero .btn-xl{--h:62px;padding-inline:28px;font-size:20px}}
 .hero .trusted .label{font-family:var(--font);font-style:normal;color:var(--ink);transform:none}.hero .trusted .arrow{stroke:var(--ink)}.hero .trusted .pfp.ring::before,.hero .trusted .pfp.ring::after{display:none}
+
+/* Keep disclosure out of the footer flow so the original wordmark spacing is preserved. */
+.figures-link{border:0;background:none;color:var(--muted);font:inherit;font-size:11px;text-decoration:underline;cursor:pointer;margin-left:14px;padding:6px 0}
+#figuresDialog{width:min(520px,calc(100% - 32px));max-height:85vh;overflow:auto;border:1px solid var(--hairline-2);border-radius:20px;background:var(--s1);color:var(--ink);padding:28px;box-shadow:0 24px 100px #0008}
+#figuresDialog::backdrop{background:#000a}#figuresDialog h2{font-size:22px;margin:0 0 16px}#figuresDialog p{font-size:14px;line-height:1.8;color:var(--muted);margin:0 0 24px}
+.stats-live b{font-variant-numeric:tabular-nums}
