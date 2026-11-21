@@ -343,6 +343,11 @@ function clipCard(c, i, project) {
   $(".cp", el).onclick = async () => {
     try { await navigator.clipboard.writeText(c.transcript); toast("Transcript copied"); } catch { toast("Your browser blocked clipboard access", "error"); }
   };
+  if (window.ClippfyPublishing && typeof openPublishingKit === "function") {
+    const kit = document.createElement("button"); kit.type = "button"; kit.className = "btn btn-glass btn-sm publish-open";
+    kit.innerHTML = `Publishing kit <small>${esc(c.publishing?.status || "draft")}</small>`;
+    kit.onclick = () => openPublishingKit(c, kit); el.append(kit);
+  }
   wirePlayer($(".pl", el));
   return el;
 }
@@ -423,8 +428,10 @@ function renderProjects(animate) {
 
 function renderLibrary(animate) {
   const grid = $("#libGrid");
+  if (typeof publishingLibraryToolbar === "function") publishingLibraryToolbar(grid);
   const q = state.libQuery.toLowerCase();
   let clips = state.jobs.flatMap((j) => j.clips.map((c) => ({ c, j })));
+  if (state.publishFilter && state.publishFilter !== "all") clips = clips.filter(({c}) => (c.publishing?.status || "draft") === state.publishFilter);
   if (q) clips = clips.filter(({ c, j }) => (c.title + " " + c.transcript + " " + j.title).toLowerCase().includes(q));
   const sorters = {
     score: (a, b) => b.c.score - a.c.score,
@@ -436,7 +443,7 @@ function renderLibrary(animate) {
   if (!clips.length) {
     grid.innerHTML = q
       ? emptyState("No clips match that search", `Nothing in your titles or transcripts mentions "${esc(state.libQuery)}".`)
-      : emptyState("Your library is empty", "Every clip from every project lands here, sorted with the highest score first.", '<a href="#create" class="btn btn-primary btn-sm">Make your first clips</a>');
+      : emptyState("Your library is empty", "Upload a video to build your library, or choose All workflows to see your other clips.", '<a href="#create" class="btn btn-primary btn-sm">Make your first clips</a>');
   } else {
     clips.slice(0, 120).forEach(({ c, j }, i) => grid.appendChild(clipCard(c, i, j.title)));
   }

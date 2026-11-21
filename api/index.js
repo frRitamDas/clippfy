@@ -88,6 +88,19 @@ app.post('/api/jobs/:id/cancel',wrap(async(req,res)=>{const r=await B.getJob(req
 app.delete('/api/jobs/:id',wrap(async(req,res)=>{await B.removeJob(req.sb,req.user,await B.getJob(req.sb,req.user,req.params.id));res.json({ok:true});}));
 app.delete('/api/jobs',wrap(async(req,res)=>{const data=(await rows(req)).filter(r=>!['queued','running'].includes(r.payload.status));for(const r of data)await B.removeJob(req.sb,req.user,r);res.json({removed:data.length});}));
 app.post('/api/jobs/:id/clips/:index',wrap(async(req,res)=>{const row=await B.getJob(req.sb,req.user,req.params.id);if(row.payload.status!=='done')throw B.fail('Wait for processing to finish.',409);res.json(await require('../lib/processor').editClip(req.sb,req.user,row,Number(req.params.index),req.body));}));
+app.patch('/api/jobs/:id/clips/:index/publishing',wrap(async(req,res)=>{
+ const row=await B.getJob(req.sb,req.user,req.params.id);
+ if(row.payload.status!=='done')throw B.fail('Finish processing before preparing a post.',409);
+ const index=Number(req.params.index),clip=row.payload.clips.find(c=>c.index===index);
+ if(!clip)throw B.fail('Clip not found.',404);
+ let publishing;try{publishing=require('../assets/integration/publishing').validate(req.body);}catch(error){throw B.fail(error.message);}
+ publishing.updatedAt=new Date().toISOString();
+ const payload={...row.payload,clips:row.payload.clips.map(c=>c.index===index?{...c,title:publishing.title,publishing}:c)};
+ // Optimistic compare-and-swap: never overwrite another tab's metadata or editor changes.
+ const saved=B.checked(await req.sb.from('jobs').update({payload}).eq('id',row.id).eq('user_id',req.user.id).eq('payload',JSON.stringify(row.payload)).select('id').maybeSingle());
+ if(!saved)throw B.fail('This project changed in another tab. Close and reopen the publishing kit before saving.',409);
+ res.json({publishing});
+}));
 app.get('/api/media/:id/:index/:kind',wrap(async(req,res)=>{const r=await B.getJob(req.sb,req.user,req.params.id);const clip=r.payload.clips.find(c=>String(c.index)===req.params.index);if(!clip)throw B.fail('Clip not found.',404);const key=req.params.kind==='thumb'?clip.thumbPath:clip.videoPath;const data=B.checked(await req.sb.storage.from('videos').createSignedUrl(key,3600,req.query.download?{download:`clippfy-${clip.index+1}.mp4`}:{}));res.redirect(302,data.signedUrl);}));
 app.post('/api/admin/access',wrap(async(req,res)=>{
  if(!B.checked(await req.sb.rpc('is_clippfy_admin')))throw B.fail('Administrator access required.',403);
