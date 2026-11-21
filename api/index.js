@@ -38,15 +38,15 @@ const plans=require('../assets/plans.json');
 async function rows(req){const out=[];for(let offset=0;;offset+=1000){const batch=B.checked(await req.sb.from('jobs').select('*').eq('user_id',req.user.id).order('created_at',{ascending:false}).order('id').range(offset,offset+999));out.push(...batch);if(batch.length<1000)return out;}}
 app.get('/api/billing',wrap(async(req,res)=>{
  const data=await rows(req),a=await access(req.sb,req.user);const used=data.reduce((s,r)=>s+(r.payload.clips||[]).length,0);
- res.json({active:true,free:true,tier:'starter',plan:'starter',access:a,interval:'month',configured:false,canManage:false,dev:false,offerOpen:false,trialUsed:false,trial:{then:'starter',thenInterval:'month',days:3},plans,usage:{clipsUsed:used,clipsLeft:a.clipLimit===null?null:Math.max(0,a.clipLimit-used),clipsLimit:a.clipLimit,storageBytes:data.reduce((s,r)=>s+(r.payload.sourceBytes||0)+(r.payload.clips||[]).reduce((n,c)=>n+(c.bytes||0),0),0),storageLimit:a.storageLimit===null?null:a.storageLimit/1024**3},limits:{uploads:true},status:a.admin?'admin':a.plan});
+ res.json({active:true,free:true,tier:'starter',plan:'starter',access:a,interval:'month',configured:false,canManage:false,dev:false,offerOpen:false,trialUsed:false,trial:{then:'starter',thenInterval:'month',days:3},plans,usage:{clipsUsed:used,clipsLeft:a.clipLimit===null?null:Math.max(0,a.clipLimit-used),clipsLimit:a.clipLimit,storageBytes:B.storageUsage(data),storageLimit:a.storageLimit===null?null:a.storageLimit/1024**3},limits:{uploads:true,uploadMaxBytes:Number.isFinite(B.MAX_UPLOAD_BYTES)?B.MAX_UPLOAD_BYTES:null},status:a.admin?'admin':a.plan});
 }));
 app.post('/api/billing/{*path}',(req,res)=>res.status(503).json({error:'Paid billing is not configured. The free upload workspace is available; no payment has been taken.'}));
-app.get('/api/stats',wrap(async(req,res)=>{const data=await rows(req);res.json({projects:data.length,clips:data.reduce((s,r)=>s+r.payload.clips.length,0),sourceMinutes:Math.round(data.reduce((s,r)=>s+(r.payload.duration||0),0)/60),avgScore:0,storageBytes:data.reduce((s,r)=>s+(r.payload.sourceBytes||0),0)});}));
+app.get('/api/stats',wrap(async(req,res)=>{const data=await rows(req);res.json({projects:data.length,clips:data.reduce((s,r)=>s+r.payload.clips.length,0),sourceMinutes:Math.round(data.reduce((s,r)=>s+(r.payload.duration||0),0)/60),avgScore:0,storageBytes:B.storageUsage(data)});}));
 app.post('/api/uploads',wrap(async(req,res)=>{
  const data=await rows(req),a=await access(req.sb,req.user);if(data.some(r=>['queued','running'].includes(r.payload.status)))throw B.fail('Wait for your current project or cancel it first.',409);
  if(exceeds(a.projectLimit,data.length+1))throw B.fail('Workspace limit reached. Delete old projects first.',409);
- if(!Number.isFinite(req.body.size)||req.body.size<1||req.body.size>B.MAX_BYTES)throw B.fail('Choose a video up to 50 MB.');
- if(exceeds(a.storageLimit,data.reduce((s,r)=>s+(r.payload.sourceBytes||0)+(r.payload.clips||[]).reduce((n,c)=>n+(c.bytes||0),0),0)+req.body.size))throw B.fail('Storage limit reached. Delete old projects first.');
+ B.validateUploadSize(req.body.size);
+ if(exceeds(a.storageLimit,B.storageUsage(data)+req.body.size))throw B.fail('Storage limit reached. Delete old projects first.');
  const id=B.crypto.randomUUID(),name=B.safeFilename(req.body.name),sourcePath=`${req.user.id}/${id}/source`;
  const result=B.checked(await req.sb.storage.from('videos').createSignedUploadUrl(sourcePath));
  res.json({id,path:sourcePath,uploadUrl:result.signedUrl,name});
@@ -65,7 +65,8 @@ app.post('/api/jobs',wrap(async(req,res)=>{
  let sourceBytes=B.MAX_BYTES;
  if(!sourceURL){
   const files=B.checked(await req.sb.storage.from('videos').list(`${req.user.id}/${id}`,{limit:10}));const file=files.find(f=>f.name==='source');
-  if(!file||!Number.isFinite(file.metadata?.size)||file.metadata.size<1||file.metadata.size>B.MAX_BYTES)throw B.fail('Upload is missing or exceeds 50 MB.');
+  if(!file)throw B.fail('The uploaded video is missing. Upload it again.');
+  B.validateUploadSize(file.metadata?.size);
   sourceBytes=file.metadata.size;
  }
  const used=all.reduce((sum,r)=>sum+(r.payload.sourceBytes||0)+(r.payload.clips||[]).reduce((n,c)=>n+(c.bytes||0),0),0);

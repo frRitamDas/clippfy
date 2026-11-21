@@ -205,11 +205,11 @@ $("#createForm").onsubmit = async (e) => {
     if (state.source === "url") {
       job = await api("/api/jobs", { json: payload });
     } else {
-      if (state.file.size > 50 * 1024 * 1024) throw new Error("Choose a video up to 50 MB.");
+      if (state.billing?.limits?.uploadMaxBytes && state.file.size > state.billing.limits.uploadMaxBytes) throw new Error("This file exceeds the configured upload size limit.");
       // Upload directly to private storage, not through Vercel's request-body limit.
       const ticket = await api("/api/uploads", { json: { name: state.file.name, size: state.file.size } });
       const uploaded = await fetch(ticket.uploadUrl, { method: "PUT", headers: { "Content-Type": state.file.type || "application/octet-stream" }, body: state.file });
-      if (!uploaded.ok) throw new Error("Upload failed. Check your connection and try again.");
+      if (!uploaded.ok) throw new Error("Upload was rejected by storage. Check available space and your storage provider’s per-file limit, then try again.");
       job = await api("/api/jobs", { json: { ...payload, id: ticket.id, name: ticket.name } });
     }
     $("#url").value = "";
@@ -412,6 +412,7 @@ async function renderStats(el) {
 }
 
 function renderHome(animate) {
+  loadBilling();
   projList($("#homeGrid"), state.homeFilter || "all", animate);
   if (animate) renderStats($("#homeStats"));
 }
@@ -995,10 +996,20 @@ function timeLeft(t) {
   return d >= 1 ? `${d}d ${h % 24}h` : h >= 1 ? `${h}h ${Math.floor((ms % 36e5) / 6e4)}m` : `${Math.max(1, Math.floor(ms / 6e4))}m`;
 }
 
+function workspaceStorageMarkup() {
+  const u=state.billing?.usage;
+  if(!u)return '<span>Storage usage unavailable. Refresh to try again.</span>';
+  const used=Math.max(0,Number(u.storageBytes)||0),limit=u.storageLimit===null?null:Math.max(0,Number(u.storageLimit)||0)*1024**3;
+  const pct=limit===null?null:Math.min(100,limit?used/limit*100:100);
+  return `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong>Workspace storage</strong><span>${bytes(used)} used${limit===null?' · no application quota':' of '+bytes(limit)+' · '+bytes(Math.max(0,limit-used))+' remaining'}</span></div>${pct===null?'':`<progress max="100" value="${pct}" aria-label="Workspace storage used" style="width:100%;height:8px;accent-color:var(--lime);margin-top:12px">${Math.round(pct)}%</progress>`}<small style="display:block;color:var(--muted);margin-top:8px">Tracked source videos and exported clips. Delete old projects to free space. Hosting limits still apply.</small>`;
+}
+function renderWorkspaceStorage(){const el=document.getElementById('workspaceStorage');if(el)el.innerHTML=workspaceStorageMarkup();}
+
 async function loadBilling() {
   try { state.billing = await api("/api/billing"); } catch { state.billing = null; }
   renderPlanChip();
   applyBillingToCreate();
+  renderWorkspaceStorage();
   return state.billing;
 }
 
@@ -1035,7 +1046,7 @@ function renderPlans() {
   if (!b) { box.innerHTML = ""; return; }
   if (b.free) {
     $("#plansTitle").textContent = "Your workspace";
-    box.innerHTML = '<article class="pp pp-trial"><div><span class="pp-tag">$1 trial · coming soon</span><h3>Your $1 trial offer</h3><p>Paid checkout is not enabled yet. Use the free workspace below now; no payment is required.</p></div></article><article class="pp pp-current"><div><span class="pp-tag">Free access</span><h3>Upload, clip, edit & download</h3><p>'+(b.access?.admin?'Admin: uncapped workspace clips/projects · provider storage limits apply':(b.usage.clipsLimit+' stored clips · '+b.usage.storageLimit+' GB workspace'))+' · sources up to 50 MB (no fixed source-duration cap). Export: 720 × 1280 MP4. Clips are evenly spaced excerpts, not AI-ranked highlights. YouTube imports support public recorded videos up to 50 MB (downloaded up to 480p); YouTube may block the server. Other sites and paid plans are not configured. Automatic captions support a Groq free-tier key; OpenAI is optional and never selected automatically.</p></div><a class="btn btn-primary" href="#create">Create clips</a></article>';
+    box.innerHTML = '<article class="pp pp-trial"><div><span class="pp-tag">$1 trial · coming soon</span><h3>Your $1 trial offer</h3><p>Paid checkout is not enabled yet. Use the free workspace below now; no payment is required.</p></div></article><article class="pp pp-current"><div><span class="pp-tag">Free access</span><h3>Upload, clip, edit & download</h3><p>'+(b.access?.admin?'Admin: uncapped workspace clips/projects · provider storage limits apply':(b.usage.clipsLimit+' stored clips · '+b.usage.storageLimit+' GB workspace'))+' · uploaded files have no fixed application size cap; available workspace storage, provider per-file limits and processing limits apply. Export: 720 × 1280 MP4. Clips are evenly spaced excerpts, not AI-ranked highlights. YouTube imports support public recorded videos up to 50 MB (downloaded up to 480p); YouTube may block the server. Other sites and paid plans are not configured. Automatic captions support a Groq free-tier key; OpenAI is optional and never selected automatically.</p></div><a class="btn btn-primary" href="#create">Create clips</a></article>';
     return;
   }
   const P = b.plans;
@@ -1131,7 +1142,7 @@ function fillBilling() {
     return;
   }
   if (b.free) {
-    body.innerHTML = `<div class="bill-row"><div><b>${b.access?.admin ? "Admin workspace" : b.access?.plan || "Free workspace"}</b><small>No charges. ${b.usage.clipsUsed} / ${b.usage.clipsLimit===null ? "uncapped" : b.usage.clipsLimit} stored clips · ${bytes(b.usage.storageBytes)} used. Delete old projects to free space.</small></div></div>`;
+    body.innerHTML = `<div class="bill-row"><div><b>${b.access?.admin ? "Admin workspace" : b.access?.plan || "Free workspace"}</b><small>No charges. ${b.usage.clipsUsed} / ${b.usage.clipsLimit===null ? "uncapped" : b.usage.clipsLimit} stored clips · ${bytes(b.usage.storageBytes)} used. Delete old projects to free space.</small></div></div><div style="padding-top:16px">${workspaceStorageMarkup()}</div>`;
     return;
   }
   const u = b.usage, P = b.plans;
@@ -1205,6 +1216,6 @@ sourceSeg.set("url"); state.source = "url";
 $$(".pane").forEach(p => p.hidden = p.dataset.pane !== "url");
 const sourceHint = document.createElement("p");
 sourceHint.className = "hint";
-sourceHint.textContent = "YouTube links and uploads: up to 50 MB; no fixed source-duration cap. Public recorded videos only; YouTube may block cloud downloads. Use only videos you own or have permission to use. 720p vertical MP4 exports. Source length has no default application cap, but Vercel execution time and storage limits still apply. Clips use evenly spaced excerpts. Keep this page open to follow progress. Captions support a Groq key; turn them off if unavailable. Caption exports currently use static Anton text; advanced animation previews are not exported.";
+sourceHint.textContent = "Uploads have no fixed application size cap; workspace storage, provider per-file limits, memory and processing time still apply. YouTube downloads remain limited to 50 MB. No fixed source-duration cap. Public recorded videos only; YouTube may block cloud downloads. Use only videos you own or have permission to use. 720p vertical MP4 exports. Source length has no default application cap, but Vercel execution time and storage limits still apply. Clips use evenly spaced excerpts. Keep this page open to follow progress. Captions support a Groq key; turn them off if unavailable. Caption exports currently use static Anton text; advanced animation previews are not exported.";
 $("#createForm").prepend(sourceHint);
 const recovery = document.createElement("a"); recovery.href="/reset"; recovery.textContent="Forgot password?"; recovery.className="btn btn-quiet btn-sm"; $("#authForm").append(recovery);

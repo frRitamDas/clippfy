@@ -16,7 +16,7 @@ Intentional page integration changes:
   ongoing activity. Preview information is linked from the footer.
 - Pricing runtime retains explicit annual billing totals and backend-aligned prices;
   paid checkout remains unavailable and is disclosed.
-- App upload hint states the real 50 MB limit instead of the original 8 GB claim.
+- App upload hint states no fixed application upload cap instead of the original 8 GB claim; workspace quotas, Supabase per-file restrictions and processing limits remain. YouTube downloads retain a separate 50 MB bound.
 - Previous custom landing CSS/font/layout overrides are no longer loaded.
 
 No backend/admin functionality has been rolled back. YouTube URL support is wired
