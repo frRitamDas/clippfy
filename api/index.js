@@ -34,7 +34,7 @@ app.patch('/api/account',wrap(async(req,res)=>{
  if(req.body.settings){patch.settings={...p.settings};for(const key of Object.keys(B.DEFAULTS)){const v=req.body.settings[key];if(v!==undefined&&typeof v===typeof B.DEFAULTS[key])patch.settings[key]=v;}}
  B.checked(await req.sb.from('profiles').update(patch).eq('id',req.user.id));res.json(await B.profile(req.sb,req.user));
 }));
-const plans={starter:{name:'Starter',price:19,yearPrice:190,clips:30,storage:1,uploads:true,live:false,maxRes:'1080p'},clipper:{name:'Clipper',price:39,yearPrice:390,clips:100,storage:5,uploads:true,live:false,maxRes:'1080p'},pro:{name:'Pro',price:79,yearPrice:790,clips:300,storage:10,uploads:true,live:false,maxRes:'1080p'},trial:{clips:10,storage:1}};
+const plans=require('../assets/plans.json');
 async function rows(req){const out=[];for(let offset=0;;offset+=1000){const batch=B.checked(await req.sb.from('jobs').select('*').eq('user_id',req.user.id).order('created_at',{ascending:false}).order('id').range(offset,offset+999));out.push(...batch);if(batch.length<1000)return out;}}
 app.get('/api/billing',wrap(async(req,res)=>{
  const data=await rows(req),a=await access(req.sb,req.user);const used=data.reduce((s,r)=>s+(r.payload.clips||[]).length,0);

@@ -130,10 +130,10 @@ $("#jobUpload").addEventListener("click", () => $("#useUpload").click());
 $("#url").placeholder = "Paste a YouTube video or Shorts link";
 // range slider with a live value label; onChange fires once on release
 function slider(input, label, fmt, onInput, onChange) {
-  const show = () => { label.textContent = fmt(+input.value); input.style.setProperty("--p", ((input.value - input.min) / (input.max - input.min)) * 100 + "%"); };
+  const show = () => { label.textContent = fmt(+input.value); input.style.setProperty("--p", ((input.value - input.min) / Math.max(1, input.max - input.min)) * 100 + "%"); };
   input.addEventListener("input", () => { show(); onInput && onInput(+input.value); });
   if (onChange) input.addEventListener("change", () => onChange(+input.value));
-  return { set: (v) => { input.value = v; show(); } };
+  return { set: (v) => { input.value = v; show(); onInput && onInput(+input.value); } };
 }
 const secs = (v) => v + "s";
 const clipsSeg = slider($("#optClips"), $("#optClipsVal"), String, (v) => (state.opts.clips = v));
@@ -142,8 +142,8 @@ const caseView = (el, v) => el.classList.toggle("lower", v === "lower");
 
 // caption style, case and captions on/off live in step 2 (create-style.js → capStep)
 function applyOptsToCreate(o) {
-  state.opts = { ...state.opts, style: o.style, crop: o.crop, clips: Math.min(10, o.clips), maxLen: o.maxLen, captions: o.captions, textCase: o.textCase || "upper" };
-  clipsSeg.set(Math.min(10, o.clips));
+  state.opts = { ...state.opts, style: o.style, crop: o.crop, clips: Math.max(1, Math.min(10, Number(o.clips) || DEFAULTS.clips)), maxLen: o.maxLen, captions: o.captions, textCase: o.textCase || "upper" };
+  clipsSeg.set(state.opts.clips);
   lenSeg.set(o.maxLen);
   if (window.capStep) capStep.fromDefaults(state.opts);
 }
@@ -182,6 +182,7 @@ $("#createForm").onsubmit = async (e) => {
   err.hidden = true;
   const showErr = (m) => { err.textContent = m; err.hidden = false; };
   const srcErr = sourceError();
+  if (state.billing?.active && state.billing.usage?.clipsLeft === 0) return showErr("Workspace clip quota reached. Delete old clips or ask the administrator for access.");
   if (window.capStep && capStep.step === 1) return srcErr ? showErr(srcErr) : capStep.go(2); // Enter on step 1 = Next
   if (srcErr) { if (window.capStep) capStep.go(1); return showErr(srcErr); }
   const cap = window.capStep ? capStep.payload() : { style: state.opts.style, captions: state.opts.captions, textCase: state.opts.textCase };
@@ -1167,8 +1168,12 @@ function fillBilling() {
 function applyBillingToCreate() {
   const b = state.billing;
   const input = $("#optClips");
-  const left = b && b.active ? b.usage.clipsLeft : 10;
+  // null means uncapped (admin), not zero. Never coerce it into a one-clip slider.
+  const remaining = b?.active ? b.usage?.clipsLeft : null;
+  const left = typeof remaining === "number" && Number.isFinite(remaining) ? Math.max(0, Math.floor(remaining)) : 10;
   input.max = String(Math.max(1, Math.min(10, left)));
+  input.disabled = left === 0;
+  input.title = left === 0 ? "Workspace clip quota reached. Delete old clips or ask the administrator for access." : "Choose up to " + input.max + " clips per project";
   if (+input.value > +input.max) { clipsSeg.set(+input.max); state.opts.clips = +input.max; } else clipsSeg.set(+input.value);
   const fileBtn = $('#sourceSeg [data-v="file"]');
   const noUploads = !!(b && b.active && !b.limits.uploads);
