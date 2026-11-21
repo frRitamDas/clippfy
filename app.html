@@ -2399,7 +2399,7 @@ body.unpaid .sb-new, body.unpaid .sb-nav, body.unpaid .sb-search, body.unpaid .q
 .pp-toggle button { padding: 8px 18px; border-radius: 10px; border: 0; background: none; color: var(--ink-2); font: inherit; font-weight: 600; cursor: pointer; }
 .pp-toggle button.on { background: var(--lime); color: #141a0b; }
 .pp-bill { margin: -10px 0 12px; color: var(--muted); font-size: 12.5px; }
-</style></head>
+</style><link rel="stylesheet" href="/assets/storage.css"></head>
 <body class="studio locked">
 <script src="/assets/integration/offer-preview.js"></script>
 
@@ -2469,7 +2469,7 @@ body.unpaid .sb-new, body.unpaid .sb-nav, body.unpaid .sb-search, body.unpaid .q
     <!-- HOME -->
     <section class="view" data-view="home" hidden="">
       <div class="stats" id="homeStats"></div>
-      <div class="glass" id="workspaceStorage" role="region" aria-label="Workspace storage" style="padding:18px 20px;border-radius:18px;margin-bottom:22px">Loading storage usage…</div>
+      <div class="glass storage-panel is-unavailable" id="workspaceStorage" role="region" aria-label="Workspace storage">Loading storage usage…</div>
       <div class="toolbar">
         <div class="seg" id="homeFilter"><span class="ind"></span><button data-v="all" class="on">All</button><button data-v="active">Processing</button><button data-v="done">Ready</button><button data-v="failed">Failed</button></div>
       </div>

@@ -998,12 +998,21 @@ function timeLeft(t) {
 
 function workspaceStorageMarkup() {
   const u=state.billing?.usage;
-  if(!u)return '<span>Storage usage unavailable. Refresh to try again.</span>';
+  if(!u)return '<h2>Workspace storage</h2><p>Usage is unavailable right now. Reopen your dashboard to try again.</p>';
   const used=Math.max(0,Number(u.storageBytes)||0),limit=u.storageLimit===null?null:Math.max(0,Number(u.storageLimit)||0)*1024**3;
-  const pct=limit===null?null:Math.min(100,limit?used/limit*100:100);
-  return `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong>Workspace storage</strong><span>${bytes(used)} used${limit===null?' · no application quota':' of '+bytes(limit)+' · '+bytes(Math.max(0,limit-used))+' remaining'}</span></div>${pct===null?'':`<progress max="100" value="${pct}" aria-label="Workspace storage used" style="width:100%;height:8px;accent-color:var(--lime);margin-top:12px">${Math.round(pct)}%</progress>`}<small style="display:block;color:var(--muted);margin-top:8px">Tracked source videos and exported clips. Delete old projects to free space. Hosting limits still apply.</small>`;
+  const ratio=limit===null?0:Math.min(1,limit?used/limit:1),pct=ratio*100;
+  const percentage=pct>0&&pct<1?'<1':String(Math.round(pct));
+  const status=limit===null?'Provider limits still apply':used>=limit?'Storage full':pct>=90?'Almost full':'Space for your next idea';
+  return `<div class="storage-details"><div class="storage-eyebrow"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16v12H4zM4 14h16M7 16h2M16 16h1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>YOUR WORKSPACE</div><h2>Every byte, in view.</h2><div class="storage-number"><strong>${bytes(used)}</strong><span>storage used${limit===null?'':' of '+bytes(limit)}</span></div>${limit===null?'':`<progress class="storage-accessible-meter" max="100" value="${pct}" aria-label="Workspace storage used">${Math.round(pct)}%</progress><div class="storage-track" aria-hidden="true"><span></span></div>`}<dl class="storage-breakdown"><div><dt>Used space</dt><dd>${bytes(used)}</dd></div><div><dt>${limit===null?'Application quota':'Free space'}</dt><dd>${limit===null?'No application quota':bytes(Math.max(0,limit-used))+' remaining'}</dd></div>${limit===null?'':`<div><dt>Total space</dt><dd>${bytes(limit)}</dd></div>`}</dl><p class="storage-note">Tracked source videos + exported clips. Delete old projects to free space. Hosting limits still apply. <a href="#projects">Manage projects ↗</a></p></div><div class="storage-visual"><div class="storage-dial" data-unmetered="${limit===null}"><svg viewBox="0 0 190 190" aria-hidden="true"><circle cx="95" cy="95" r="80"/><circle class="storage-arc" cx="95" cy="95" r="80"/></svg><div class="storage-dial-center"><b>${limit===null?'Unmetered':percentage+'%'}</b><span>${limit===null?'application quota':'of workspace used'}</span></div></div><span class="storage-status">${status}</span></div>`;
 }
-function renderWorkspaceStorage(){const el=document.getElementById('workspaceStorage');if(el)el.innerHTML=workspaceStorageMarkup();}
+function styleStoragePanel(el){
+  const u=state.billing?.usage,limit=u?.storageLimit===null?null:(Number(u?.storageLimit)||0)*1024**3,used=Math.max(0,Number(u?.storageBytes)||0);
+  const ratio=limit===null?0:Math.min(1,limit?used/limit:1);
+  el.classList.toggle('is-unavailable',!u);el.dataset.level=limit!==null&&used>=limit?'full':ratio>=.9?'warning':'normal';
+  el.style.setProperty('--storage-ratio',String(ratio));el.style.setProperty('--storage-percent',(ratio*100)+'%');
+}
+function renderWorkspaceStorage(){const el=document.getElementById('workspaceStorage');if(!el)return;const sig=JSON.stringify(state.billing?.usage||null);if(el.dataset.usage===sig)return;el.dataset.usage=sig;styleStoragePanel(el);el.innerHTML=workspaceStorageMarkup();}
+
 
 async function loadBilling() {
   try { state.billing = await api("/api/billing"); } catch { state.billing = null; }
@@ -1142,7 +1151,8 @@ function fillBilling() {
     return;
   }
   if (b.free) {
-    body.innerHTML = `<div class="bill-row"><div><b>${b.access?.admin ? "Admin workspace" : b.access?.plan || "Free workspace"}</b><small>No charges. ${b.usage.clipsUsed} / ${b.usage.clipsLimit===null ? "uncapped" : b.usage.clipsLimit} stored clips · ${bytes(b.usage.storageBytes)} used. Delete old projects to free space.</small></div></div><div style="padding-top:16px">${workspaceStorageMarkup()}</div>`;
+    body.innerHTML = `<div class="bill-row"><div><b>${b.access?.admin ? "Admin workspace" : b.access?.plan || "Free workspace"}</b><small>No charges. ${b.usage.clipsUsed} / ${b.usage.clipsLimit===null ? "uncapped" : b.usage.clipsLimit} stored clips · ${bytes(b.usage.storageBytes)} used. Delete old projects to free space.</small></div></div><div class="storage-panel settings-storage">${workspaceStorageMarkup()}</div>`;
+    styleStoragePanel(body.querySelector('.settings-storage'));
     return;
   }
   const u = b.usage, P = b.plans;
